@@ -1,11 +1,11 @@
 === Simple File List ===
 Contributors: eemitch
 Donate link: http://simplefilelist.com
-Tags: file list, file sharing, upload files, exchange files, manage files
+Tags: file list, file sharing, file upload form, upload files, exchange files, host files, zip files, dropbox, ftp
 Requires at least: 5.0
-Requires PHP: 7.4
-Tested up to: 6.6
-Stable tag: 6.1.11
+Requires PHP: 7
+Tested up to: 6.4
+Stable tag: 6.1.13
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -224,7 +224,7 @@ A: I got frustrated with the difficulties of getting files back and forth betwee
 
 == Upgrade Notice ==
 
-* 6.1.11 - Improvements
+* 6.1.13 - Security Fixes
 
 
 == Screenshots ==
@@ -235,6 +235,10 @@ A: I got frustrated with the difficulties of getting files back and forth betwee
 
 
 == Changelog ==
+
+= 6.1.13 =
+* Security Fix for a reflecte cross-site scripting (XSS) issue
+* Security improvements to back-end navigation tabs.
 
 = 6.1.11 =
 * General Code Improvements
