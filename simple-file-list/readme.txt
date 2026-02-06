@@ -3,9 +3,9 @@ Contributors: eemitch
 Donate link: http://simplefilelist.com
 Tags: file list, file sharing, share documents, zip files, ftp alternative
 Requires at least: 5.0
-Requires PHP: 7
-Tested up to: 6.8
-Stable tag: 6.1.15
+Requires PHP: 7.4
+Tested up to: 6.9
+Stable tag: 6.1.18
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -219,12 +219,14 @@ A: Yes! I enjoy helping people. Please contact me with any issues using the <a h
 
 A: I got frustrated with the difficulties of getting files back and forth between myself and my non-technical clients once they become too large for email, and having an archive for them to return to was needed. Training these people to use FTP or Dropbox was a challenge. I wanted something simple that I could use on my own website, so I created a simple index.php page that solved my problem. I later realized that others could benefit from this functionality, so I decided to port it to my favorite website platform; WordPress. I also hoped that the donations would pay for a large home and a private jet, but that has not happened yet :-(  Regardless, I still enjoy giving to the community and helping others.
 
+= Q: How do I report a security vulnerability that I have found?
 
+A: I take security issues very seriously. If you find and issue or have a concern, please contact me directly via <a href="https://simplefilelist.com/get-support/">simplefilelist.com</a>
 
 
 == Upgrade Notice ==
 
-* 6.1.15 - Security Fix
+* 6.1.18 - Fixed Broken Translations
 
 
 == Screenshots ==
@@ -235,6 +237,23 @@ A: I got frustrated with the difficulties of getting files back and forth betwee
 
 
 == Changelog ==
+
+= 6.1.18 =
+* Fixed broken translations
+
+= 6.1.17 =
+* Security Fix: Fixed broken access control vulnerability (CVE-2025-68591) in file management operations.
+** Added back-end capability checks to help prevent malicious back-end users from circumventing the Back-End Access setting.
+
+= 6.1.16 =
+* Security Fix: Fixed critical directory traversal vulnerability in upload confirmation routine.
+* Security: Added comprehensive input validation to prevent path traversal attacks in file upload processing.
+* Improved: Enhanced validation for upload folder paths and file list arrays.
+* Improved: Added MIME type validation to verify file types match their extensions and prevent malicious uploads.
+* Fixed WordPress Plugin Check (PCP) compliance issues.
+* Renamed thumbnail default files to remove special characters.
+* Fixed text domain issues for internationalization.
+* Major code refactoring and improvements across multiple files.
 
 = 6.1.15 =
 * Addressed a security issue involving file renaming.

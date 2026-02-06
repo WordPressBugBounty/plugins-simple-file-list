@@ -8,10 +8,10 @@ Plugin Name: Simple File List
 Plugin URI: http://simplefilelist.com
 Description: A Basic File List Manager with File Uploader
 Author: Mitchell Bennis
-Version: 6.1.15
+Version: 6.1.18
 Author URI: http://simplefilelist.com
 License: GPLv2 or later
-Text Domain: ee-simple-file-list
+Text Domain: simple-file-list
 Domain Path: /languages
 */
 
@@ -19,9 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 // CONSTANTS
 define('eeSFL_BASE_DevMode', FALSE);
-define('eeSFL_BASE_Version', '6.1.15'); // Plugin version
+define('eeSFL_BASE_Version', '6.1.18'); // Plugin version
 define('eeSFL_BASE_PluginName', 'Simple File List');
-define('eeSFL_BASE_PluginSlug', 'ee-simple-file-list');
+define('eeSFL_BASE_PluginSlug', 'simple-file-list');
 define('eeSFL_BASE_PluginDir', 'simple-file-list');
 define('eeSFL_BASE_FileListDefaultDir', 'simple-file-list/'); // Default Upload Directory
 define('eeSFL_BASE_PluginMenuTitle', 'File List');
@@ -63,16 +63,14 @@ function eeSFL_BASE_aioseo_filter_conflicting_shortcodes( $conflictingShortcodes
    return $conflictingShortcodes;
 }
 
-function eeSFL_BASE_Textdomain() {
-	load_plugin_textdomain('ee-simple-file-list', false, basename(dirname(__FILE__)) . '/languages/');
-}
-add_action('init', 'eeSFL_BASE_Textdomain');
-
 
 // Plugin Setup
 function eeSFL_BASE_Setup() {
 
 	global $eeSFL_BASE, $eeSFLU_BASE, $eeSFL_BASE_VarsForJS, $eeSFL_BASE_Extensions, $eeSFLM;
+
+	// Load plugin translations
+	load_plugin_textdomain( 'simple-file-list', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 
 	// A required resource...
 	if(!function_exists('is_plugin_active')) {
@@ -83,19 +81,19 @@ function eeSFL_BASE_Setup() {
 	$eeProtocol = isset( $_SERVER['HTTPS'] ) ? 'https://' : 'http://';
 	$eeSFL_BASE_VarsForJS = array(
 		'ajaxurl' => admin_url( 'admin-ajax.php', $eeProtocol ),
-		'eeEditText' => __('Edit', 'ee-simple-file-list'), // Edit link text
-		'eeConfirmDeleteText' => __('Are you sure you want to delete this?', 'ee-simple-file-list'), // Delete confirmation
-		'eeCancelText' => __('Cancel', 'ee-simple-file-list'),
-		'eeCopyLinkText' => __('The Link Has Been Copied', 'ee-simple-file-list'),
-		'eeUploadLimitText' => __('Upload Limit', 'ee-simple-file-list'),
-		'eeFileTooLargeText' => __('This file is too large', 'ee-simple-file-list'),
-		'eeFileNotAllowedText' => __('This file type is not allowed', 'ee-simple-file-list'),
-		'eeUploadErrorText' => __('Upload Failed', 'ee-simple-file-list'),
-		'eeFilesSelected' =>  __('Files Selected', 'ee-simple-file-list'),
+		'eeEditText' => __('Edit', 'simple-file-list'), // Edit link text
+		'eeConfirmDeleteText' => __('Are you sure you want to delete this?', 'simple-file-list'), // Delete confirmation
+		'eeCancelText' => __('Cancel', 'simple-file-list'),
+		'eeCopyLinkText' => __('The Link Has Been Copied', 'simple-file-list'),
+		'eeUploadLimitText' => __('Upload Limit', 'simple-file-list'),
+		'eeFileTooLargeText' => __('This file is too large', 'simple-file-list'),
+		'eeFileNotAllowedText' => __('This file type is not allowed', 'simple-file-list'),
+		'eeUploadErrorText' => __('Upload Failed', 'simple-file-list'),
+		'eeFilesSelected' =>  __('Files Selected', 'simple-file-list'),
 
 		// Back-End Only
-		'eeShowText' => __('Show', 'ee-simple-file-list'), // Shortcode Builder
-		'eeHideText' => __('Hide', 'ee-simple-file-list')
+		'eeShowText' => __('Show', 'simple-file-list'), // Shortcode Builder
+		'eeHideText' => __('Hide', 'simple-file-list')
 	);
 
 	// Get Class
@@ -164,10 +162,10 @@ function eeSFL_BASE_Setup() {
 
 					} else {
 
-						$eeERROR = '<strong>' . $eeSFL_Extension . ' &larr; ' . __('EXTENSION DISABLED', 'ee-simple-file-list') . '</strong><br />' .
-							__('Please go to Plugins and update the extension to the latest version.', 'ee-simple-file-list');
+						$eeERROR = '<strong>' . $eeSFL_Extension . ' &larr; ' . __('EXTENSION DISABLED', 'simple-file-list') . '</strong><br />' .
+							__('Please go to Plugins and update the extension to the latest version.', 'simple-file-list');
 
-						if( is_admin() AND @$_GET['page'] == 'ee-simple-file-list') {
+						if( is_admin() AND @$_GET['page'] == 'simple-file-list') {
 							$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['errors'][] = $eeERROR;
 						}
 					}
@@ -420,7 +418,7 @@ function eeSFL_BASE_AdminHead($eeHook) {
 	$deps = array('jquery');
 
 	// wp_die($eeHook); // Check the hook
-    $eeHooks = array('toplevel_page_ee-simple-file-list');
+    $eeHooks = array('toplevel_page_simple-file-list');
 
     if(in_array($eeHook, $eeHooks)) {
 
@@ -520,6 +518,37 @@ function eeSFL_BASE_FileEditor() {
 	$eeReferer = wp_get_referer();
 	if( strpos($eeReferer, '/wp-admin/') OR $eeSFL_BASE->eeListSettings['AllowFrontManage'] == 'YES') {
 
+		// Verify user has proper capabilities for file management
+		// Back-end requests must respect the AdminRole setting
+		if( strpos($eeReferer, '/wp-admin/') ) {
+			// Map AdminRole to capability (same as admin menu access control)
+			$eeRequiredCapability = 'activate_plugins'; // Default to admin
+			if(isset($eeSFL_BASE->eeListSettings['AdminRole'])) {
+				switch ($eeSFL_BASE->eeListSettings['AdminRole']) {
+					case 1:
+						$eeRequiredCapability = 'read'; // Subscriber
+						break;
+					case 2:
+						$eeRequiredCapability = 'edit_posts'; // Contributor
+						break;
+					case 3:
+						$eeRequiredCapability = 'publish_posts'; // Author
+						break;
+					case 4:
+						$eeRequiredCapability = 'edit_others_pages'; // Editor
+						break;
+					case 5:
+						$eeRequiredCapability = 'activate_plugins'; // Admin
+						break;
+				}
+			}
+			if( !current_user_can($eeRequiredCapability) ) {
+				return 'ERROR 97'; // Insufficient permissions
+			}
+		}
+		// Front-end management: AllowFrontManage == 'YES' allows editing without additional capability check
+		// (The setting itself controls access)
+
 		// The Action
 		if( strlen($_POST['eeFileAction']) ) { $eeFileAction = sanitize_text_field($_POST['eeFileAction']); }
 		if( !$eeFileAction ) { return "Missing the Action"; }
@@ -549,7 +578,8 @@ function eeSFL_BASE_FileEditor() {
 
 			if( strpos($eeFileName, '.') ) { // Gotta be a File - Looking for the dot rather than using is_file() for better speed
 
-				if(unlink($eeFilePath)) {
+				$deleteResult = eeSFL_BASE_FileSystem('delete', array('file' => $eeFilePath));
+				if($deleteResult['success']) {
 
 					// Remove the item from the array
 					$eeAllFilesArray = get_option('eeSFL_FileList_1'); // Get the full list
@@ -572,11 +602,11 @@ function eeSFL_BASE_FileEditor() {
 					return 'SUCCESS';
 
 				} else {
-					return __('File Delete Failed', 'ee-simple-file-list') . ':' . $eeFileName;
+					return __('File Delete Failed', 'simple-file-list') . ':' . $eeFileName;
 				}
 
 			} else {
-				return __('Item is Not a File', 'ee-simple-file-list') . ':' . $eeFileName;
+				return __('Item is Not a File', 'simple-file-list') . ':' . $eeFileName;
 			}
 
 		} elseif($eeFileAction == 'Edit') {
@@ -639,13 +669,15 @@ function eeSFL_BASE_FileEditor() {
 					$eeOldFilePath = ABSPATH . $eeSFL_BASE->eeListSettings['FileListDir'] . $eeFileName;
 					$eeNewFilePath = ABSPATH . $eeSFL_BASE->eeListSettings['FileListDir'] . $eeFileNameNew;
 
-					if(!is_file($eeOldFilePath)) {
-						return __('File Not Found', 'ee-simple-file-list') . ': ' . basename($eeOldFilePath);
+					$fileCheck = eeSFL_BASE_FileSystem('is_file', array('file' => $eeOldFilePath));
+					if(!$fileCheck['data']) {
+						return __('File Not Found', 'simple-file-list') . ': ' . basename($eeOldFilePath);
 					}
 
-					if( !rename($eeOldFilePath, $eeNewFilePath) ) {
+					$moveResult = eeSFL_BASE_FileSystem('move', array('from' => $eeOldFilePath, 'to' => $eeNewFilePath));
+					if( !$moveResult['success'] ) {
 
-						return __('Could Not Change the Name', 'ee-simple-file-list') . ' ' . $eeOldFilePath . ' ' . __('to', 'ee-simple-file-list') . ' ' . $eeNewFilePath;
+						return __('Could Not Change the Name', 'simple-file-list') . ' ' . $eeOldFilePath . ' ' . __('to', 'simple-file-list') . ' ' . $eeNewFilePath;
 
 					} else {
 
@@ -658,7 +690,7 @@ function eeSFL_BASE_FileEditor() {
 					$eeMessages[] = $eeSFL_BASE->eeListSettings['FileListDir'] . $eeFileNameNew;
 
 				} else {
-					return __('Invalid New File Name', 'ee-simple-file-list');
+					return __('Invalid New File Name', 'simple-file-list');
 				}
 			}
 
@@ -684,8 +716,8 @@ function eeSFL_BASE_FileEditor() {
 function eeSFL_BASE_ActionPluginLinks( $links ) {
 
 	$eeLinks = array(
-		'<a href="' . admin_url( 'admin.php?page=ee-simple-file-list' ) . '">' . __('Admin List', 'ee-simple-file-list') . '</a>',
-		'<a href="' . admin_url( 'admin.php?page=ee-simple-file-list&tab=settings' ) . '">' . __('Settings', 'ee-simple-file-list') . '</a>'
+		'<a href="' . admin_url( 'admin.php?page=simple-file-list' ) . '">' . __('Admin List', 'simple-file-list') . '</a>',
+		'<a href="' . admin_url( 'admin.php?page=simple-file-list&tab=settings' ) . '">' . __('Settings', 'simple-file-list') . '</a>'
 	);
 	return array_merge( $links, $eeLinks );
 }
@@ -700,13 +732,13 @@ function eeSFL_BASE_AdminMenu() {
 	global $eeSFL_BASE;
 
 	// Only include when accessing the plugin admin pages
-	if( isset($_GET['page']) ) {
+	if( isset($_GET['page']) && $_GET['page'] == eeSFL_BASE_PluginSlug ) {
 
 		$eeOutput = '<!-- Simple File List Admin -->';
 		$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = eeSFL_BASE_noticeTimer() . ' - Admin Menu Loading ...';
 
 		$eeSFL_Nonce = wp_create_nonce('eeInclude'); // Security
-		include_once($eeSFL_BASE->eeEnvironment['pluginDir'] . 'ee-admin-page.php'); // Admin's List Management Page
+		include_once(plugin_dir_path(__FILE__) . 'ee-admin-page.php'); // Admin's List Management Page
 
 	}
 
@@ -737,8 +769,8 @@ function eeSFL_BASE_AdminMenu() {
 
 	// The Admin Menu
 	add_menu_page(
-		__(eeSFL_BASE_PluginName, eeSFL_BASE_PluginSlug), // Page Title - Defined at the top of this file
-		__(eeSFL_BASE_PluginMenuTitle, eeSFL_BASE_PluginSlug), // Menu Title
+		eeSFL_BASE_PluginName, // Page Title - Defined at the top of this file
+		eeSFL_BASE_PluginMenuTitle, // Menu Title
 		$eeCapability, // User status reguired to see the menu
 		eeSFL_BASE_PluginSlug, // Slug
 		'eeSFL_BASE_BackEnd', // Function that displays the menu page
