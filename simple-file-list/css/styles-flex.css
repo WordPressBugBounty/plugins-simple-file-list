@@ -1,8 +1,7 @@
 /*
-// Simple File List Pro - Copyright 2022
+// Simple File List - Copyright 2026
 // Author: Mitchell Bennis | support@simplefilelist.com | https://simplefilelist.com
-// License: EULA | https://simplefilelist.com/end-user-license-agreement/
-// All changes to, modifications to, or re-uses of this script are prohibited without prior consent.
+// License: GPLv2 or later | https://www.gnu.org/licenses/gpl-2.0.html
 */
 
 .eeSFL section.eeFiles {
@@ -51,6 +50,7 @@
 	padding-left: 1em;
 }
 .eeSFL div.eeSFL_FlexRow .eeSFL_FileLink {
+	min-width: 0;
 	padding-bottom: .25em;
 	border-bottom: 2px solid var(--ee-color-flex-border);
 }
@@ -69,12 +69,29 @@
 	margin: 0 0 .5em 0;
 	font-weight: bold;
 	font-size: 1.2em;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	hyphens: auto;
 }
 .eeSFL div.eeSFL_FlexRow p {
 	margin: 0 0 .5em 0;
 }
 .eeSFL div.eeSFL_FlexRow h4 a {
+	display: block;
+	max-width: 100%;
+	white-space: normal !important;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	hyphens: auto;
 	text-decoration: none;
+}
+
+.eeSFL div.eeSFL_FlexRow h4.eeSFL_FileLink,
+.eeSFL div.eeSFL_FlexRow h4 a.eeSFL_FileName {
+	white-space: normal !important;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 .eeSFL div.eeSFL_FileOps .eeSFL_ListFileActions {

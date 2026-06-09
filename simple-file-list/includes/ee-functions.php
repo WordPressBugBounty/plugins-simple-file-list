@@ -1,7 +1,8 @@
-<?php // Simple File List Script: ee-functions.php | Author: Mitchell Bennis | support@simplefilelist.com
-
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
-if ( ! wp_verify_nonce( $eeSFL_Nonce, 'eeSFL_Functions' ) ) exit('ERROR 98'); // Exit if nonce fails
+// Simple File List - Copyright 2026
+// Author: Mitchell Bennis | support@simplefilelist.com | https://simplefilelist.com
+// License: GPLv2 or later | https://www.gnu.org/licenses/gpl-2.0.html
 
 
 
@@ -20,176 +21,203 @@ if ( ! wp_verify_nonce( $eeSFL_Nonce, 'eeSFL_Functions' ) ) exit('ERROR 98'); //
  * Supported operations:
  *
  * copy - Copy a file
- *   eeSFL_BASE_FileSystem('copy', array('from' => '/source/path', 'to' => '/dest/path', 'overwrite' => true))
+ *   eeSFL_FileSystem('copy', array('from' => '/source/path', 'to' => '/dest/path', 'overwrite' => true))
  *
  * move - Move/rename a file
- *   eeSFL_BASE_FileSystem('move', array('from' => '/source/path', 'to' => '/dest/path', 'overwrite' => true))
+ *   eeSFL_FileSystem('move', array('from' => '/source/path', 'to' => '/dest/path', 'overwrite' => true))
  *
  * delete - Delete a file or directory
- *   eeSFL_BASE_FileSystem('delete', array('file' => '/path/to/file'))
+ *   eeSFL_FileSystem('delete', array('file' => '/path/to/file'))
  *
  * exists - Check if file or directory exists
- *   eeSFL_BASE_FileSystem('exists', array('file' => '/path/to/check'))
+ *   eeSFL_FileSystem('exists', array('file' => '/path/to/check'))
  *
  * is_file - Check if path is a file
- *   eeSFL_BASE_FileSystem('is_file', array('file' => '/path/to/check'))
+ *   eeSFL_FileSystem('is_file', array('file' => '/path/to/check'))
  *
  * is_dir - Check if path is a directory
- *   eeSFL_BASE_FileSystem('is_dir', array('path' => '/path/to/check'))
+ *   eeSFL_FileSystem('is_dir', array('path' => '/path/to/check'))
  *
  * mkdir - Create directory
- *   eeSFL_BASE_FileSystem('mkdir', array('path' => '/path/dir/', 'chmod' => 0755))
+ *   eeSFL_FileSystem('mkdir', array('path' => '/path/dir/', 'chmod' => 0755))
  *
  * get_contents - Read file contents
- *   eeSFL_BASE_FileSystem('get_contents', array('file' => '/path/to/file'))
+ *   eeSFL_FileSystem('get_contents', array('file' => '/path/to/file'))
  *
  * put_contents - Write file contents
- *   eeSFL_BASE_FileSystem('put_contents', array('file' => '/path/to/file', 'data' => 'content', 'mode' => 0644))
+ *   eeSFL_FileSystem('put_contents', array('file' => '/path/to/file', 'data' => 'content', 'mode' => 0644))
  *
  * dirlist - List directory contents
- *   eeSFL_BASE_FileSystem('dirlist', array('path' => '/path/dir/', 'include_hidden' => false, 'recursive' => false))
+ *   eeSFL_FileSystem('dirlist', array('path' => '/path/dir/', 'include_hidden' => false, 'recursive' => false))
  *
  * filesize - Get file size in bytes
- *   eeSFL_BASE_FileSystem('filesize', array('file' => '/path/to/file'))
+ *   eeSFL_FileSystem('filesize', array('file' => '/path/to/file'))
  *
  * filemtime - Get file modification time (Unix timestamp)
- *   eeSFL_BASE_FileSystem('filemtime', array('file' => '/path/to/file'))
+ *   eeSFL_FileSystem('filemtime', array('file' => '/path/to/file'))
  *
  * touch - Update file access and modification times (creates file if it doesn't exist)
- *   eeSFL_BASE_FileSystem('touch', array('file' => '/path/to/file', 'time' => 1234567890, 'atime' => 1234567890))
+ *   eeSFL_FileSystem('touch', array('file' => '/path/to/file', 'time' => 1234567890, 'atime' => 1234567890))
  */
-function eeSFL_BASE_FileSystem($mode, $params = array()) {
+function eeSFL_FileSystem($mode, $params = array()) {
 
-	// Initialize WP_Filesystem
+	// Try to initialize WP_Filesystem (preferred — Plugin Check compliant)
+	// On managed hosts (e.g. Pressable, Kinsta, WP Engine) WP_Filesystem() returns false
+	// because no FTP/SSH credentials are available at runtime. In that case we fall through
+	// to native PHP equivalents which work fine since the web server has direct write access.
     if ( ! function_exists( 'WP_Filesystem' ) ) {
         require_once ABSPATH . 'wp-admin/includes/file.php';
     }
 
-    if ( ! WP_Filesystem() ) {
-        return array('success' => false, 'error' => 'Cannot initialize WordPress filesystem');
-    }
-
+    $eeUseWPFS = WP_Filesystem();
     global $wp_filesystem;
 
     switch($mode) {
+
         case 'copy':
-            // Params: 'from' (string), 'to' (string), 'overwrite' (bool, optional, default: true)
-            return array(
-                'success' => $wp_filesystem->copy($params['from'], $params['to'], $params['overwrite'] ?? true),
-                'data' => null
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => $wp_filesystem->copy($params['from'], $params['to'], $params['overwrite'] ?? true), 'data' => null);
+            }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.copy_copy -- WP_Filesystem unavailable on managed hosts
+            return array('success' => copy($params['from'], $params['to']), 'data' => null);
 
         case 'move':
-            // Params: 'from' (string), 'to' (string), 'overwrite' (bool, optional, default: true)
-            return array(
-                'success' => $wp_filesystem->move($params['from'], $params['to'], $params['overwrite'] ?? true),
-                'data' => null
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => $wp_filesystem->move($params['from'], $params['to'], $params['overwrite'] ?? true), 'data' => null);
+            }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- WP_Filesystem unavailable on managed hosts
+            return array('success' => rename($params['from'], $params['to']), 'data' => null);
 
         case 'delete':
-            // Params: 'file' (string), 'recursive' (bool, optional, default: false)
-            // WordPress delete() handles both files and directories
-            $recursive = isset($params['recursive']) ? $params['recursive'] : true; // Default to true for directories
-            return array(
-                'success' => $wp_filesystem->delete($params['file'], $recursive),
-                'data' => null
-            );
+            $recursive = isset($params['recursive']) ? $params['recursive'] : true;
+            if ( $eeUseWPFS ) {
+                return array('success' => $wp_filesystem->delete($params['file'], $recursive), 'data' => null);
+            }
+            if ( is_dir($params['file']) ) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- WP_Filesystem unavailable on managed hosts; this is already the fallback branch
+                return array('success' => $recursive ? wp_delete_directory($params['file']) : rmdir($params['file']), 'data' => null);
+            }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- WP_Filesystem unavailable on managed hosts
+            return array('success' => unlink($params['file']), 'data' => null);
 
         case 'exists':
-            // Params: 'file' (string) - can be file or directory path
-            return array(
-                'success' => true,
-                'data' => $wp_filesystem->exists($params['file'])
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => true, 'data' => $wp_filesystem->exists($params['file']));
+            }
+            return array('success' => true, 'data' => file_exists($params['file']));
 
         case 'is_file':
-            // Params: 'file' (string)
-            return array(
-                'success' => true,
-                'data' => $wp_filesystem->is_file($params['file'])
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => true, 'data' => $wp_filesystem->is_file($params['file']));
+            }
+            return array('success' => true, 'data' => is_file($params['file']));
 
         case 'is_dir':
-            // Params: 'path' (string)
-            return array(
-                'success' => true,
-                'data' => $wp_filesystem->is_dir($params['path'])
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => true, 'data' => $wp_filesystem->is_dir($params['path']));
+            }
+            return array('success' => true, 'data' => is_dir($params['path']));
 
         case 'mkdir':
-            // Params: 'path' (string), 'chmod' (octal, optional, default: FS_CHMOD_DIR)
-            return array(
-                'success' => $wp_filesystem->mkdir($params['path'], $params['chmod'] ?? FS_CHMOD_DIR),
-                'data' => null
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => $wp_filesystem->mkdir($params['path'], $params['chmod'] ?? FS_CHMOD_DIR), 'data' => null);
+            }
+            return array('success' => wp_mkdir_p($params['path']), 'data' => null);
 
         case 'get_contents':
-            // Params: 'file' (string)
-            return array(
-                'success' => true,
-                'data' => $wp_filesystem->get_contents($params['file'])
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => true, 'data' => $wp_filesystem->get_contents($params['file']));
+            }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- WP_Filesystem unavailable on managed hosts
+            $data = file_get_contents($params['file']);
+            return array('success' => $data !== false, 'data' => $data);
 
         case 'put_contents':
-            // Params: 'file' (string), 'data' (string), 'mode' (octal, optional, default: FS_CHMOD_FILE)
-            return array(
-                'success' => $wp_filesystem->put_contents($params['file'], $params['data'], $params['mode'] ?? FS_CHMOD_FILE),
-                'data' => null
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => $wp_filesystem->put_contents($params['file'], $params['data'], $params['mode'] ?? FS_CHMOD_FILE), 'data' => null);
+            }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- WP_Filesystem unavailable on managed hosts
+            return array('success' => file_put_contents($params['file'], $params['data']) !== false, 'data' => null);
 
         case 'dirlist':
-            // Params: 'path' (string), 'include_hidden' (bool, optional, default: false), 'recursive' (bool, optional, default: false)
-            return array(
-                'success' => true,
-                'data' => $wp_filesystem->dirlist($params['path'], $params['include_hidden'] ?? false, $params['recursive'] ?? false)
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => true, 'data' => $wp_filesystem->dirlist($params['path'], $params['include_hidden'] ?? false, $params['recursive'] ?? false));
+            }
+            // Native fallback: build same array structure as WP_Filesystem->dirlist()
+            $eeDir = $params['path'];
+            if ( ! is_dir($eeDir) ) {
+                return array('success' => false, 'data' => array());
+            }
+            $eeItems = array();
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.dir_opendir -- WP_Filesystem unavailable on managed hosts
+            $eeHandle = opendir($eeDir);
+            if ( $eeHandle ) {
+                $eeIncludeHidden = $params['include_hidden'] ?? false;
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.dir_readdir -- WP_Filesystem unavailable on managed hosts
+                while ( false !== ( $eeEntry = readdir($eeHandle) ) ) {
+                    if ( $eeEntry === '.' || $eeEntry === '..' ) { continue; }
+                    if ( ! $eeIncludeHidden && strpos($eeEntry, '.') === 0 ) { continue; }
+                    $eeFullPath = trailingslashit($eeDir) . $eeEntry;
+                    $eeItems[$eeEntry] = array(
+                        'name' => $eeEntry,
+                        'type' => is_dir($eeFullPath) ? 'd' : 'f',
+                        'size' => is_file($eeFullPath) ? filesize($eeFullPath) : 0,
+                    );
+                }
+                closedir($eeHandle);
+            }
+            return array('success' => true, 'data' => $eeItems);
 
         case 'filesize':
-            // Params: 'file' (string)
-            return array(
-                'success' => true,
-                'data' => $wp_filesystem->size($params['file'])
-            );
+            if ( $eeUseWPFS ) {
+                return array('success' => true, 'data' => $wp_filesystem->size($params['file']));
+            }
+            $eeSize = file_exists($params['file']) ? filesize($params['file']) : false;
+            return array('success' => $eeSize !== false, 'data' => $eeSize);
 
         case 'filemtime':
-            // Params: 'file' (string)
-            return array(
-                'success' => true,
-                'data' => $wp_filesystem->mtime($params['file'])
-            );
+            // Strip trailing slashes before calling filemtime — PHP returns false for
+            // directory paths with a trailing forward slash on Windows (WAMP/XAMPP).
+            $eeMtimePath = rtrim($params['file'], '/\\');
+            if ( $eeUseWPFS ) {
+                $eeMtime = $wp_filesystem->mtime($eeMtimePath);
+                return array('success' => $eeMtime !== false, 'data' => $eeMtime);
+            }
+            $eeMtime = file_exists($eeMtimePath) ? filemtime($eeMtimePath) : false;
+            return array('success' => $eeMtime !== false, 'data' => $eeMtime);
 
         case 'touch':
-            // Params: 'file' (string), 'time' (int, optional Unix timestamp), 'atime' (int, optional Unix timestamp)
-            // WordPress filesystem doesn't have a native touch() method, so we implement it
-            if (!$wp_filesystem->exists($params['file'])) {
-                // Create empty file if it doesn't exist
-                $result = $wp_filesystem->put_contents($params['file'], '', FS_CHMOD_FILE);
-                if (!$result) {
-                    return array('success' => false, 'error' => 'Failed to create file for touch operation');
-                }
+            $eeFile = $params['file'];
+            $eeTime = isset($params['time']) ? $params['time'] : time();
+            $eeAtime = isset($params['atime']) ? $params['atime'] : $eeTime;
+            if ( $eeUseWPFS && ! $wp_filesystem->exists($eeFile) ) {
+                $wp_filesystem->put_contents($eeFile, '', FS_CHMOD_FILE);
+            } elseif ( ! $eeUseWPFS && ! file_exists($eeFile) ) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- WP_Filesystem unavailable on managed hosts
+                file_put_contents($eeFile, '');
             }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- No WP alternative for touch()
+            $eeResult = touch($eeFile, $eeTime, $eeAtime);
+            return array('success' => $eeResult, 'data' => null);
 
-            // For setting timestamps, we need to fall back to native PHP since WordPress filesystem
-            // doesn't provide timestamp modification methods
-            if (isset($params['time'])) {
-                $atime = isset($params['atime']) ? $params['atime'] : $params['time'];
-                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- WordPress doesn't provide a touch() alternative
-                $result = touch($params['file'], $params['time'], $atime);
-                return array(
-                    'success' => $result,
-                    'data' => null,
-                    'error' => $result ? null : 'Failed to update file timestamps'
+        case 'dirsize':
+            if ( ! isset($params['path']) ) {
+                return array('success' => false, 'error' => 'Path parameter required');
+            }
+            if ( ! is_dir($params['path']) ) {
+                return array('success' => false, 'error' => 'Path is not a directory');
+            }
+            $calculateSize = function($dir) use (&$calculateSize) {
+                $total = 0;
+                $iterator = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
                 );
-            }
-
-            // If no time specified, just touching for current time
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- WordPress doesn't provide a touch() alternative
-            $result = touch($params['file']);
-            return array(
-                'success' => $result,
-                'data' => null,
-                'error' => $result ? null : 'Failed to touch file'
-            );
+                foreach ($iterator as $file) {
+                    if ($file->isFile()) { $total += $file->getSize(); }
+                }
+                return $total;
+            };
+            return array('success' => true, 'data' => $calculateSize($params['path']));
 
         default:
             return array('success' => false, 'error' => 'Unknown filesystem operation: ' . $mode);
@@ -199,32 +227,93 @@ function eeSFL_BASE_FileSystem($mode, $params = array()) {
 
 
 
+/**
+ * Ensure File List Directory Exists
+ *
+ * Creates the file list directory if it doesn't exist, even if database entries remain.
+ * This prevents the issue where deleting the directory but keeping DB entries leaves
+ * the system in an inconsistent state.
+ *
+ * @param int $eeListID The list ID to check (default: 1)
+ * @return bool True if directory exists or was created successfully
+ */
+function eeSFL_EnsureFileListDirExists($eeListID = 1) {
 
+	global $eeSFL;
 
-// Get Elapsed Time
-function eeSFL_BASE_noticeTimer() {
+	// Get the settings for this list
+	$eeSettings = get_option('eeSFL_Settings_' . $eeListID);
 
-	global $eeSFL_BASE, $eeSFL_BASE_StartTime, $eeSFL_BASE_MemoryUsedStart; // Time SFL got going
+	// If no settings, use default directory
+	if (!$eeSettings || !isset($eeSettings['FileListDir'])) {
+		$eeFileListDir = WP_CONTENT_DIR . '/uploads/' . eeSFL_FileListDefaultDir;
+	} else {
+		$eeFileListDir = $eeSFL->eeSFL_GetRootPath() . $eeSettings['FileListDir'];
+	}
 
-	$eeTime = microtime(true) - $_SERVER["REQUEST_TIME_FLOAT"]; // Time Right Now
+	eeSFL_Debug_Log("Checking if directory exists: $eeFileListDir", 'FileSystem', $eeListID);
 
-	$eeTime = $eeTime - $eeSFL_BASE_StartTime; // Actual Time Elapsed
+	// Check if directory exists
+	if (!file_exists($eeFileListDir)) {
 
-	$eeTime = number_format($eeTime, 3); // Format to 0.000
+		eeSFL_Debug_Log("Directory missing, creating: $eeFileListDir", 'FileSystem', $eeListID);
 
-	$eeMemory = $eeSFL_BASE->eeSFL_FormatFileSize(memory_get_usage() - $eeSFL_BASE_MemoryUsedStart);
+		// Create directory with proper permissions
+		if (wp_mkdir_p($eeFileListDir)) {
 
-	return $eeTime . ' S | ' . $eeMemory;
+			eeSFL_Debug_Log("Directory created successfully", 'FileSystem', $eeListID);
+
+			// Create index.html for security
+			$index_file = $eeFileListDir . 'index.html';
+			if (!file_exists($index_file)) {
+				file_put_contents($index_file, '<!-- Simple File List -->');
+			}
+
+			// If we have settings and files in the database but directory was missing,
+			// the database is now out of sync. We should trigger a re-scan.
+			if ($eeSettings && get_option('eeSFL_FileList_' . $eeListID)) {
+				eeSFL_Debug_Log("Directory was recreated but DB has file entries - re-scan needed", 'FileSystem', $eeListID);
+				// Clear the file list array to force re-scan
+				delete_option('eeSFL_FileList_' . $eeListID);
+			}
+
+			return true;
+		} else {
+			eeSFL_Debug_Log("ERROR: Failed to create directory", 'FileSystem', $eeListID);
+			return false;
+		}
+	}
+
+	eeSFL_Debug_Log("Directory already exists", 'FileSystem', $eeListID);
+	return true;
 }
 
 
 
-function eeSFL_BASE_CheckSupported() {
 
-	global $eeSFL_BASE;
+// Update a Settings Option
+function eeSFL_UpdateSetting($eeSetting, $eeValue, $eeReturn = FALSE) {
 
-	$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = eeSFL_BASE_noticeTimer() . ' - Checking Supported ...';
+	if(isset($eeSFL->eeListSettings[$eeSetting])) {
+		$eeSFL->eeListSettings[$eeSetting] = $eeValue;
+		update_option('eeSFL_Settings_' . $eeSFL->eeListID, $eeSFL->eeListSettings);
 
+		if($eeReturn === TRUE) {
+			return $eeSFL->eeListSettings;
+		}
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+
+
+
+function eeSFL_CheckSupported() {
+
+	global $eeSFL;
 
 	// Check for supported technologies
 	$eeSupported = array();
@@ -232,39 +321,26 @@ function eeSFL_BASE_CheckSupported() {
     // Check for ffMpeg
     if(function_exists('shell_exec')) {
 
-		$eeSupported[] = 'Shell';
-
 		if(shell_exec('ffmpeg -version')) {
 			$eeSupported[] = 'ffMpeg';
-			$eeSFL_Log[eeSFL_BASE_Go]['Supported'][] = 'Supported: ffMpeg';
-		} else {
-			$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = '---> shell_exec("ffMpeg") FAILED';
+			$eeSFL->eeUserMessages['Supported'][] = 'Supported: ffMpeg';
 		}
     } else {
-	    $eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = '---> shell_exec() NOT SUPPORTED';
+	    $eeSFL->eeUserMessages['Trouble'] = '---> shell_exec() NOT SUPPORTED';
     }
 
-    if($eeSFL_BASE->eeEnvironment['eeOS'] != 'WINDOWS') {
+    if($eeSFL->eeEnvironment['eeOS'] != 'WINDOWS') {
 
-		// Check for ImageMagick
-		$phpExt = 'imagick';
-		if(extension_loaded($phpExt)) {
-			$eeSupported[] = 'ImageMagick';
-			$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['Supported'][] = 'Supported: ImageMagick';
-		}
+		// Check for GhostScript (wp_get_image_editor handles image resizing — no Imagick requirement)
+		if($eeSFL->eeEnvironment['eeOS'] == 'LINUX') { // TO DO - Make it work for IIS
 
-		// Check for GhostScript
-		if($eeSFL_BASE->eeEnvironment['eeOS'] == 'LINUX') { // TO DO - Make it work for IIS
-
-			if(function_exists('exec')) {
+			if(function_exists('shell_exec')) {
 
 				$phpExt = 'gs'; // <<<---- This will be different for Windows
-				if(exec($phpExt . ' --version') >= 1.0) { // <<<---- This will be different for Windows too
+				if(shell_exec($phpExt . ' --version') >= 1.0) { // <<<---- This will be different for Windows too
 					$eeSupported[] = 'GhostScript';
-					$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['Supported'][] = 'Supported: GhostScript';
+					$eeSFL->eeUserMessages['Supported'][] = 'Supported: GhostScript';
 				}
-			} else {
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = '---> exec() NOT SUPPORTED';
 			}
 		}
 	}
@@ -273,8 +349,6 @@ function eeSFL_BASE_CheckSupported() {
 
 	if(count($eeSupported)) {
 		update_option('eeSFL_Supported', $eeSupported);
-	} else {
-		update_option('eeSFL_Supported', array('None'));
 	}
 
 	return TRUE;
@@ -285,8 +359,9 @@ function eeSFL_BASE_CheckSupported() {
 
 
 
+
 // LEGACY - Convert hyphens to spaces for display only
-function eeSFL_BASE_PreserveSpaces($eeFileName) {
+function eeSFL_PreserveSpaces($eeFileName) {
 
 	$eeFileName = str_replace('-', ' ', $eeFileName);
 
@@ -298,7 +373,7 @@ function eeSFL_BASE_PreserveSpaces($eeFileName) {
 
 
 // Add the correct URL argument operator, ? or &
-function eeSFL_BASE_AppendProperUrlOp($eeURL) {
+function eeSFL_AppendProperUrlOp($eeURL) {
 
 	if ( strpos($eeURL, '?') ) {
 		$eeURL .= '&';
@@ -311,110 +386,121 @@ function eeSFL_BASE_AppendProperUrlOp($eeURL) {
 
 
 
-// Check for the Upload Directory, Create if Needed
-function eeSFL_BASE_FileListDirCheck($eeFileListDir) {
 
-	global $eeSFL_BASE;
-	$eeCopyMaunalFile = FALSE;
+
+// Check for the Upload Folder, Create if Needed
+function eeSFL_FileListDirCheck($eeFileListDir) {
+
+	global $eeSFL;
+	static $eeReportedDirErrors = array(); // Prevent duplicate error messages across repeated calls
+	$eeCopyManualFile = FALSE;
 
 	if(!$eeFileListDir OR substr($eeFileListDir, 0, 1) == '/' OR strpos($eeFileListDir, '../') ) {
 
-		$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['errors'][] = __('Bad Directory Given', 'simple-file-list') . ': ' . $eeFileListDir;
+		$eeSFL->eeUserMessages['errors'][] = __('Bad Directory Given', 'simple-file-list') . ': ' . $eeFileListDir;
 
 		return FALSE;
 	}
 
-	$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = eeSFL_BASE_noticeTimer() . ' - Checking: ' . $eeFileListDir;
+	// Use eeSFL_WP_ROOT — the verified site root which accounts for managed hosts
+	// (e.g. Pressable) where ABSPATH points to the WP core directory rather than
+	// the site root. eeSFL_GetRootPath() derives the correct path from the uploads dir.
+	$eeSiteRoot = $eeSFL->eeSFL_GetRootPath();
 
-	$dirCheck = eeSFL_BASE_FileSystem('is_dir', array('path' => ABSPATH . $eeFileListDir));
-	if( !$dirCheck['data'] ) { // Directory Changed or New Install
+	eeSFL_Debug_Log('- Checking: ' . $eeFileListDir, 'General', $eeSFL->eeListID);
 
-		$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = eeSFL_BASE_noticeTimer() . ' - New Install or Directory Change...';
+	$dir_check = eeSFL_FileSystem('is_dir', array('path' => $eeSiteRoot . $eeFileListDir));
+	if( !$dir_check['data'] ) { // Directory Changed or New Install
 
-		// Check if directory exists and is writable
-		$existsCheck = eeSFL_BASE_FileSystem('exists', array('file' => ABSPATH . $eeFileListDir));
-		if(!$existsCheck['data']) {
+		eeSFL_Debug_Log("New Install or Directory Change...", 'General');
 
-			$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = eeSFL_BASE_noticeTimer() . ' - No Directory Found. Creating ...';
+		eeSFL_Debug_Log("No Directory Found. Creating ...", 'General');
 
-			if ($eeSFL_BASE->eeEnvironment['eeOS'] == 'WINDOWS') {
+		// Create directory using WordPress filesystem (primary method — Plugin Check compliant)
+		$create_result = eeSFL_FileSystem('mkdir', array('path' => $eeSiteRoot . $eeFileListDir));
 
-				$mkdirResult = eeSFL_BASE_FileSystem('mkdir', array('path' => ABSPATH . $eeFileListDir));
-			    if( !$mkdirResult['success'] ) {
-
-				    $eeSFL_BASE->eeLog[eeSFL_BASE_Go]['errors'][] = __('Cannot Create Windows Directory:', 'simple-file-list') . ': ' . $eeFileListDir;
+		if(!$create_result['success']) {
+			// WP_Filesystem mkdir failed. On managed hosts (Pressable, Kinsta, WP Engine, etc.)
+			// WP_Filesystem() returns false at runtime because no FTP/SSH credentials are
+			// available, even though the web server process has direct write access.
+			// Fall back to wp_mkdir_p() (native PHP mkdir) directly — no pre-check needed.
+			if(wp_mkdir_p($eeSiteRoot . $eeFileListDir)) {
+				eeSFL_Debug_Log('Directory created via wp_mkdir_p() fallback (managed host): ' . $eeSiteRoot . $eeFileListDir, 'FileSystem');
+			} else {
+				// Both methods failed — show error (once per directory per page load)
+				if(!isset($eeReportedDirErrors[$eeFileListDir])) {
+					$eeReportedDirErrors[$eeFileListDir] = TRUE;
+					if ($eeSFL->eeEnvironment['eeOS'] == 'WINDOWS') {
+						$eeSFL->eeUserMessages['errors'][] = __('Cannot Create Windows Directory:', 'simple-file-list') . ': ' . $eeFileListDir;
+					} elseif($eeSFL->eeEnvironment['eeOS'] == 'LINUX') {
+						$eeSFL->eeUserMessages['errors'][] = __('Cannot Create Linux Directory:', 'simple-file-list') . ': ' . $eeFileListDir;
+					} else {
+						$eeSFL->eeUserMessages['errors'][] = __('Cannot Create Directory (Unknown OS):', 'simple-file-list') . ': ' . $eeFileListDir;
+					}
 				}
 
-			} elseif($eeSFL_BASE->eeEnvironment['eeOS'] == 'LINUX') {
-
-				$mkdirResult = eeSFL_BASE_FileSystem('mkdir', array('path' => ABSPATH . $eeFileListDir, 'chmod' => 0755));
-			    if( !$mkdirResult['success'] ) { // Linux - Need to set permissions
-
-				    $eeSFL_BASE->eeLog[eeSFL_BASE_Go]['errors'][] = __('Cannot Create Linux Directory:', 'simple-file-list') . ': ' . $eeFileListDir;
-				}
-			} else {
-
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['errors'][] = __('ERROR: Could not detect operating system', 'simple-file-list');
-				return FALSE;
-			}
-
-			// Check if directory was created successfully
-			$existsCheck = eeSFL_BASE_FileSystem('exists', array('file' => ABSPATH . $eeFileListDir));
-			if(!$existsCheck['data']) {
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['errors'][] = __('Cannot create the upload directory', 'simple-file-list') . ': ' . $eeFileListDir;
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['errors'][] = __('Please check directory permissions', 'simple-file-list');
+				eeSFL_Debug_Log("CRITICAL: Directory creation failed for: " . $eeSiteRoot . $eeFileListDir, 'FileSystem');
+				eeSFL_Debug_Log("Create result: " . wp_json_encode($create_result), 'FileSystem');
 
 				return FALSE;
-
-			} else {
-
-				$eeCopyMaunalFile = TRUE;
-
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = eeSFL_BASE_noticeTimer() . ' - The File List Dir Has Been Created!';
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = $eeFileListDir;
 			}
-
 		} else {
-			$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = eeSFL_BASE_noticeTimer() . ' - FileListDir Looks Good';
+			// Directory creation succeeded - log success
+			eeSFL_Debug_Log("Directory creation succeeded: " . $eeSiteRoot . $eeFileListDir, 'FileSystem');
 		}
 
+		// Verify directory was created — use native is_dir() since WP_Filesystem may not
+		// be available on managed hosts (same reason we added the fallback above).
+		if(!is_dir($eeSiteRoot . $eeFileListDir)) {
+			$eeSFL->eeUserMessages['errors'][] = __('Cannot create the upload directory', 'simple-file-list') . ': ' . $eeFileListDir;
+			$eeSFL->eeUserMessages['errors'][] = __('Please check directory permissions', 'simple-file-list');
+
+			return FALSE;
+
+		} else {
+
+			$eeCopyManualFile = TRUE;
+
+			eeSFL_Debug_Log("The File List Dir Has Been Created!", 'General');
+			eeSFL_Debug_Log($eeFileListDir, 'General', $eeSFL->eeListID);
+		}
+
+	} else {
+		eeSFL_Debug_Log("FileListDir Looks Good", 'General');
 	}
 
 	// Check index.html, create if needed.
 	if( strlen($eeFileListDir) >= 2 ) {
 
-		$eeFile = ABSPATH . $eeFileListDir . 'index.html'; // Disallow direct file indexing.
+		$eeFile = $eeSiteRoot . $eeFileListDir . 'index.html'; // Disallow direct file indexing.
 
-		$fileCheck = eeSFL_BASE_FileSystem('is_file', array('file' => $eeFile));
-		if(!$fileCheck['data']) {
+		$file_check = eeSFL_FileSystem('is_file', array('file' => $eeFile));
+		if(!$file_check['data']) {
 
-			// Get template content
-			$templateContent = eeSFL_BASE_FileSystem('get_contents', array('file' => $eeSFL_BASE->eeEnvironment['pluginDir'] . 'includes/ee-index-template.html'));
+			// Get template content using WordPress filesystem
+			$template_content = eeSFL_FileSystem('get_contents', array('file' => $eeSFL->eeEnvironment['pluginDir'] . 'includes/ee-index-template.html'));
 
-			if($templateContent['success']) {
-				// Write the content to index.html
-				$writeResult = eeSFL_BASE_FileSystem('put_contents', array('file' => $eeFile, 'data' => $templateContent['data']));
+			if($template_content['success']) {
+				// Write index.html using WordPress filesystem
+				$write_result = eeSFL_FileSystem('put_contents', array(
+					'file' => $eeFile,
+					'data' => $template_content['data']
+				));
 
-				if(!$writeResult['success']) {
-					$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['warnings'][] = __('WARNING! Could not write file', 'simple-file-list') . ': index.html';
-					$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['warnings'][] = __('Please upload a blank index file to this location to prevent unauthorized access.', 'simple-file-list');
-					$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['warnings'][] = ABSPATH . '/' . $eeFileListDir;
+				if(!$write_result['success']) {
+					$eeSFL->eeUserMessages['warnings'][] = __('WARNING! Could not write file', 'simple-file-list') . ': index.html';
+					$eeSFL->eeUserMessages['warnings'][] = __('Please upload a blank index file to this location to prevent unauthorized access.', 'simple-file-list');
+					$eeSFL->eeUserMessages['warnings'][] = $eeSiteRoot . $eeFileListDir;
 				}
-			} else {
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['warnings'][] = __('WARNING! Could not read template file for index.html', 'simple-file-list');
 			}
 		}
 
-		if($eeCopyMaunalFile === TRUE) {
+		if($eeCopyManualFile === TRUE) {
 
 			// Copy the Manual to the new directory, so there's at least one file.
-			$eeCopyFrom = $eeSFL_BASE->eeEnvironment['pluginDir'] . 'Simple-File-List.pdf';
-			$eeCopyTo = ABSPATH . '/' . $eeFileListDir . 'Simple-File-List.pdf';
-			$copyResult = eeSFL_BASE_FileSystem('copy', array('from' => $eeCopyFrom, 'to' => $eeCopyTo));
-
-			if(!$copyResult['success']) {
-				$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['warnings'][] = __('Could not copy manual file to directory', 'simple-file-list');
-			}
+			$eeCopyFrom = $eeSFL->eeEnvironment['pluginDir'] . 'Simple-File-List.pdf';
+			$eeCopyTo = $eeSiteRoot . $eeFileListDir . 'Simple-File-List.pdf';
+			eeSFL_FileSystem('copy', array('from' => $eeCopyFrom, 'to' => $eeCopyTo));
 		}
 	}
 
@@ -426,16 +512,25 @@ function eeSFL_BASE_FileListDirCheck($eeFileListDir) {
 
 
 
+
+
+
+
+
 // Return the size of a file in a nice format.
-// Accepts a path or filesize in bytes
-function eeSFL_BASE_GetFileSize($eeSFL_File) {
+// Accepts a path or file size in bytes
+function eeSFL_GetFileSize($eeSFL_File) {
 
     if( is_numeric($eeSFL_File) ) {
 		$bytes = $eeSFL_File;
-	} elseif(is_file(ABSPATH . $eeSFL_File)) {
-		$bytes = filesize(ABSPATH . $eeSFL_File);
 	} else {
-		return FALSE;
+		$file_check = eeSFL_FileSystem('is_file', array('file' => eeSFL_WP_ROOT . $eeSFL_File));
+		if($file_check['data']) {
+			$size_result = eeSFL_FileSystem('filesize', array('file' => eeSFL_WP_ROOT . $eeSFL_File));
+			$bytes = $size_result['success'] ? $size_result['data'] : 0;
+		} else {
+			return FALSE;
+		}
 	}
 
     $kilobyte = 1024;
@@ -464,37 +559,166 @@ function eeSFL_BASE_GetFileSize($eeSFL_File) {
 }
 
 
+function eeSFL_NormalizeSlashes($eePath) {
+
+	if(empty($eePath)) { return ''; }
+
+	// Normalize Windows backslashes to forward slashes
+	$eePath = str_replace('\\', '/', $eePath);
+
+	// Ensure there is no leading slash
+	$eePath = ltrim($eePath, '/');
+
+	// Ensure there is a single trailing slash
+	$eePath = rtrim($eePath, '/') . '/';
+
+	// Find/Replace // with /
+	$eePath = str_replace('//', '/', $eePath);
+
+	return $eePath;
+}
 
 
+
+function eeSFL_SanitizeFolderName($eeFolderName) {
+
+	$eeFolderName = str_replace('/', '-', $eeFolderName); // Slash to Hyphen
+	$eeFolderName = str_replace(' ', '-', $eeFolderName); // Spaces to Hyphen
+    $eeFolderName = str_replace('.', '-', $eeFolderName); // Dots to Hyphens
+    $eeFolderName = str_replace('\'', '', $eeFolderName); // Strip apostrphes
+	$eeFolderName = str_replace('^', '-', $eeFolderName); // Carrot to Hyphen
+	$eeFolderName = str_replace('@', '-at-', $eeFolderName); // Spaces to -at-
+	$eeFolderName = str_replace('&', 'and', $eeFolderName); // Make the & sign literal
+
+	$eeFolderName = sanitize_file_name($eeFolderName);
+
+    return $eeFolderName;
+}
+
+
+
+// Sanitize & Validate the File List Directory Path String
+function eeSFL_ValidateFileListDir($eeDir) {
+
+	global $eeSFL;
+
+	if(!$eeDir) {
+		$eeSFL->eeUserMessages['errors'][] = __('No Path Found', 'simple-file-list');
+		return FALSE;
+	}
+
+	// Replace Backslashes with Slashes
+	$eeDir = str_replace('\\', '/', $eeDir);
+
+	// Check if eeDir has a leading slash. We don't want that.
+	if($eeDir[0] == '/') {  $eeDir = substr($eeDir, 1); }
+
+	// Check if eeDir has a trailing slash. We do want that.
+	$eeChar = substr($eeDir, -1);
+	if($eeChar != '/') {  $eeDir .= '/'; }
+
+	// Sanitize each foldername in the path
+	if( substr_count($eeDir, '/') > 1 ) {
+
+		// Traversal Prevention
+		$eeCheck = str_replace('../', '', $eeDir );
+
+		if($eeCheck != $eeDir) {
+
+			$eeSFL->eeUserMessages['errors'][] = __('Path is Not Direct', 'simple-file-list');
+			$eeSFL->eeUserMessages['errors'][] = $eeDir;
+			return FALSE;
+		}
+
+		$eePieces = explode('/', $eeDir);
+		$eeDir = ''; // Reset for rebuilding
+
+		foreach( $eePieces as $eePiece ) { // Rebuild as we sanitize each level
+
+			$eePiece = eeSFL_SanitizeFolderName($eePiece);
+
+		    if($eePiece AND strlen($eePiece) <= 255) {
+
+			    $eeDir .= $eePiece . '/';
+		    }
+		}
+
+	} else {
+
+		$eeCheck = substr($eeDir, 0, -1); // Exclude the trailing slash
+		$eeDir = eeSFL_SanitizeFolderName( $eeCheck ) . '/'; // Add it back
+	}
+
+	if($eeDir) {
+
+		// This are locations NOT Allowed
+		if(strpos($eeDir, '.') === 0
+		OR strpos($eeDir, 'p-admin/')
+		OR strpos($eeDir, 'p-includes/')
+		OR strpos($eeDir, 'p-content/themes/')
+		OR $eeDir == '/' OR $eeDir == '-/' OR $eeDir == '--/'
+		OR $eeDir == 'wp-content/'
+		OR $eeDir == 'wp-content/plugins/'
+		OR $eeDir == 'wp-content/uploads/' ) {
+
+			$eeSFL->eeUserMessages['errors'][] = 'This File List Location is Not Allowed';
+			$eeSFL->eeUserMessages['errors'][] = $eeDir;
+
+			return FALSE;
+		}
+
+		return $eeDir; // Good to go
+
+	}
+
+	$eeSFL->eeUserMessages['errors'][] = __('Path Failed Validation', 'simple-file-list');
+	return FALSE;
+}
 
 
 
 // Yes or No Settings Checkboxes
-function eeSFL_BASE_ProcessCheckboxInput($eeTerm) {
+function eeSFL_ProcessCheckboxInput($eeTerm) {
 
-	$eeValue = sanitize_text_field(@$_POST['ee' . $eeTerm]);
+	// Verify admin permissions for settings form submission (Missing nonce security)
+	// Note: Calling contexts should handle nonce verification before calling this function
+	if (!current_user_can('manage_options') && !is_admin()) {
+		return 'NO'; // Default to NO if insufficient permissions
+	}
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Tools function, nonce verification handled by calling context
+	$eeValue = isset($_POST['ee' . $eeTerm]) ? sanitize_text_field(wp_unslash($_POST['ee' . $eeTerm])) : '';
 
 	if($eeValue == 'YES') { return 'YES'; } else { return 'NO'; }
 }
 
 
 
-// Sanitize Form Text Inputs
-function eeSFL_BASE_ProcessTextInput($eeTerm, $eeType = 'text') {
+// Settings Text Inputs
+function eeSFL_ProcessTextInput($eeTerm, $eeType = 'text') {
+
+	// Verify admin permissions for settings form submission (Missing nonce security)
+	// Note: Calling contexts should handle nonce verification before calling this function
+	if (!current_user_can('manage_options') && !is_admin()) {
+		return ''; // Return empty string if insufficient permissions
+	}
 
 	$eeValue = '';
 
 	if($eeType == 'email') {
 
-		$eeValue = filter_var(sanitize_email(@$_POST['ee' . $eeTerm]), FILTER_VALIDATE_EMAIL);
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Tools function, nonce verification handled by calling context
+		$eeValue = filter_var(sanitize_email(isset($_POST['ee' . $eeTerm]) ? wp_unslash($_POST['ee' . $eeTerm]) : ''), FILTER_VALIDATE_EMAIL);
 
 	} elseif($eeType == 'textarea') {
 
-		$eeValue = esc_textarea(sanitize_textarea_field( @$_POST['ee' . $eeTerm] ));
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Tools function, nonce verification handled by calling context
+		$eeValue = esc_textarea(sanitize_textarea_field(isset($_POST['ee' . $eeTerm]) ? wp_unslash($_POST['ee' . $eeTerm]) : ''));
 
 	} else {
 
-		$eeValue = wp_strip_all_tags(@$_POST['ee' . $eeTerm]);
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Tools function, nonce verification handled by calling context
+		$eeValue = wp_strip_all_tags(isset($_POST['ee' . $eeTerm]) ? wp_unslash($_POST['ee' . $eeTerm]) : '');
 		$eeValue = esc_textarea(sanitize_text_field($eeValue));
 	}
 
@@ -503,9 +727,8 @@ function eeSFL_BASE_ProcessTextInput($eeTerm, $eeType = 'text') {
 
 
 
-
 // Return a formatted header string
-function eeSFL_BASE_ReturnHeaderString($eeFrom, $eeCc = FALSE, $eeBcc = FALSE) {
+function eeSFL_ReturnHeaderString($eeFrom, $eeCc = FALSE, $eeBcc = FALSE) {
 
 	$eeAdminEmail = get_option('admin_email');
 
@@ -531,7 +754,7 @@ function eeSFL_BASE_ReturnHeaderString($eeFrom, $eeCc = FALSE, $eeBcc = FALSE) {
 
 // Process a raw input of email addresses
 // Can be a single address or a comma sep list
-function eeSFL_BASE_ProcessEmailString($eeString) {
+function eeSFL_ProcessEmailString($eeString) {
 
 	$eeString = sanitize_text_field($eeString);
 
@@ -567,5 +790,1113 @@ function eeSFL_BASE_ProcessEmailString($eeString) {
 		return FALSE;
 	}
 }
+
+
+
+
+// Protect file list directories form direct URL access (hotlinking)
+function eeSFL_LimitDirAccess($eeMode) {
+
+	global $eeSFL;
+
+	// Delete and Start Over
+	$eeFile = $eeSFL->eeSFL_GetRootPath() . $eeSFL->eeListSettings['FileListDir'] . '.htaccess';
+	$file_check = eeSFL_FileSystem('exists', array('file' => $eeFile));
+	if( $file_check['data'] ) {
+		eeSFL_FileSystem('delete', array('file' => $eeFile));
+	}
+
+	if($eeMode == 'YES' OR $eeMode == 'NORMAL') { // Not Needed
+		return TRUE;
+	}
+
+	// Apache / LightSpeed
+	if(stripos($eeSFL->eeEnvironment['eeWebServer'], 'Apache') === 0 OR stripos($eeSFL->eeEnvironment['eeWebServer'], 'LiteSpeed') === 0 ) { // Write .htaccess
+
+		// Check .htaccess file, create if needed.
+		$eeFile = $eeSFL->eeSFL_GetRootPath() . $eeSFL->eeListSettings['FileListDir'] . '.htaccess';
+
+		// Get template content using WordPress filesystem
+		$template_content = eeSFL_FileSystem('get_contents', array('file' => plugin_dir_path(__FILE__) . 'htaccess-template.txt'));
+
+		if(!$template_content['success']) {
+			$eeSFL->eeUserMessages['errors'][] = __('ERROR: Could not read .htaccess template', 'simple-file-list');
+			return FALSE;
+		}
+
+		// Assign our file types
+		$eeFormats = str_replace(',', '|', $eeSFL->eeListSettings['FileFormats']);
+		$eeFormats = str_replace(' ', '', $eeFormats);
+		$eeString = str_replace('FILE_TYPES', $eeFormats, $template_content['data']);
+
+		// Create .htaccess file using WordPress filesystem
+		$write_result = eeSFL_FileSystem('put_contents', array(
+			'file' => $eeFile,
+			'data' => $eeString
+		));
+
+		if(!$write_result['success']) {
+			$eeSFL->eeUserMessages['errors'][] = __('WARNING: Could not write', 'simple-file-list') . ' .htaccess';
+			return FALSE;
+		} else {
+			eeSFL_Debug_Log(" .htaccess file has been set", 'General');
+		}
+
+	// NGINX
+	} elseif( stripos($eeSFL->eeEnvironment['eeWebServer'], 'nginx') === 0 ) {
+
+		$eeSFL->eeUserMessages['messages'][] = '<strong>' . __('IMPORTANT', 'simple-file-list') . ' - ' . 'Nginx ' . __('Web Server Detected', 'simple-file-list') . '</strong><br />' .
+			__('To prevent direct URL access to your files you must manually update your server configuration.', 'simple-file-list') . '<br />
+				<a href="https://kinsta.com/blog/hotlinking/#nginx" target="_blank">' . __('Learn More', 'simple-file-list') . '</a>';
+
+	// Microsoft IIS
+	} elseif( stripos($eeSFL->eeEnvironment['eeWebServer'], 'iis') OR stripos($eeSFL->eeEnvironment['eeWebServer'], 'iis') === 0  ) {
+
+		$eeSFL->eeUserMessages['messages'][] = '<strong>' . __('IMPORTANT', 'simple-file-list') . ' - ' . 'IIS ' . __('Web Server Detected', 'simple-file-list') . '</strong><br />' .
+			__('To prevent direct URL access to your files you must manually update your server configuration.', 'simple-file-list') . '<br />
+				<a href="https://medium.com/@ankittyagi366/how-to-prevent-hotlinking-in-iis-server-asp-net-framework-asp-net-core-application-21900edd80d7" target="_blank">' . __('Learn More', 'simple-file-list') . '</a>';
+
+	// Something Else
+	} else {
+		$eeSFL->eeUserMessages['messages'][] = '<strong>' . __('IMPORTANT', 'simple-file-list') . ' - ' . __('Unknown Web Server', 'simple-file-list') . '</strong><br />' .
+			__('To prevent direct URL access to your files you must manually update your server configuration.', 'simple-file-list');
+	}
+}
+
+
+
+
+// ============================================================================
+// FILE EDITOR OPERATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Delete a file or folder
+ *
+ * @param string $eeFileName The name of the file/folder to delete
+ * @param string|false $eeSubFolder The subfolder path (or FALSE if in root)
+ * @return string 'SUCCESS' or error message
+ */
+function eeSFL_DeleteFile($eeFileName, $eeSubFolder = FALSE) {
+
+	global $eeSFL, $eeSFLF;
+
+	eeSFL_Debug_Log("DELETE: Starting delete operation for '$eeFileName'", 'FileOps', $eeSFL->eeListID);
+	eeSFL_Debug_Log("DELETE: Subfolder received: " . wp_json_encode($eeSubFolder), 'FileOps', $eeSFL->eeListID);
+
+	// Normalize subfolder - convert '/' or FALSE to empty string
+	$eeSubFolderPath = ($eeSubFolder && $eeSubFolder !== '/') ? $eeSubFolder : '';
+	eeSFL_Debug_Log("DELETE: Normalized subfolder: '$eeSubFolderPath'", 'FileOps', $eeSFL->eeListID);
+
+	$eeMessages = array('Deleting File');
+
+	// Construct full file path
+	$eeFilePath = eeSFL_WP_ROOT . $eeSFL->eeListSettings['FileListDir'] . $eeSubFolderPath . $eeFileName;
+	eeSFL_Debug_Log("DELETE: Full path: '$eeFilePath'", 'FileOps', $eeSFL->eeListID);
+
+	$eeMessages[] = $eeSFL->eeListSettings['FileListDir'] . $eeFileName;
+
+	// Check if it's a file
+	if( eeSFL_FileSystem('is_file', array('file' => $eeFilePath))['data'] ) {
+
+		eeSFL_Debug_Log("DELETE: Item is a file, proceeding with file deletion", 'FileOps', $eeSFL->eeListID);
+
+		$eeDeleteResult = eeSFL_FileSystem('delete', array('file' => $eeFilePath));
+
+		if($eeDeleteResult['success']) {
+
+		eeSFL_Debug_Log("DELETE: File deleted successfully from disk", 'FileOps', $eeSFL->eeListID);
+
+		// Remove from array
+		foreach( $eeSFL->eeAllFiles as $eeKey => $eeThisFileArray) {
+			if($eeThisFileArray['FilePath'] == $eeSubFolderPath . $eeFileName) {
+				unset($eeSFL->eeAllFiles[$eeKey]);
+				eeSFL_Debug_Log("DELETE: Removed file from array at key: $eeKey", 'FileOps', $eeSFL->eeListID);
+				break;
+			}
+		}
+
+		// Reduce the parent folder's item count
+		if($eeSubFolderPath) {
+			foreach( $eeSFL->eeAllFiles as $eeKey => $eeThisFileArray) {
+				if($eeThisFileArray['FilePath'] == $eeSubFolderPath) {
+					$eeSFL->eeAllFiles[$eeKey]['ItemCount'] = $eeThisFileArray['ItemCount'] - 1;
+					eeSFL_Debug_Log("DELETE: Updated parent folder item count", 'FileOps', $eeSFL->eeListID);
+					break;
+				}
+			}
+		}
+
+
+		$eeSFL->eeSFL_UpdateMainFileArray(false);
+		$eeSFL->eeSFL_UpdateThumbnail($eeSubFolderPath . $eeFileName, FALSE, $eeSFL->eeListID);
+
+		// Custom Hook
+		$eeMessages[] = 'File Deleted';
+			do_action('eeSFL_Hook_Deleted', $eeMessages);
+
+			eeSFL_Debug_Log("DELETE: File deletion completed successfully", 'FileOps', $eeSFL->eeListID);
+			return 'SUCCESS';
+
+		} else {
+			eeSFL_Debug_Log("DELETE: File delete failed: " . $eeFileName, 'FileOps', $eeSFL->eeListID);
+			return __('File Delete Failed', 'simple-file-list') . ':' . $eeFileName;
+		}
+
+	} elseif( eeSFL_FileSystem('is_dir', array('path' => $eeFilePath))['data'] ) {
+
+	// Delete Folder
+	eeSFL_Debug_Log("DELETE: Item is a folder, proceeding with folder deletion", 'FileOps', $eeSFL->eeListID);
+
+	if($eeSFLF && $eeSFLF->eeSFLF_DeleteFolder($eeFilePath) ) {
+
+		eeSFL_Debug_Log("DELETE: Folder deleted successfully from disk", 'FileOps', $eeSFL->eeListID);			// Remove from the array
+			$eeFilePathArray = $eeSubFolderPath . $eeFileName . '/';
+
+			foreach( $eeSFL->eeAllFiles as $eeKey => $eeThisFileArray ) {
+			if( strpos($eeThisFileArray['FilePath'], $eeFilePathArray) === 0 ) {
+				unset($eeSFL->eeAllFiles[$eeKey]);
+			}
+		}
+
+		// Update the counts and sizes in the array
+		if($eeSFLF) {
+			$eeSFLF->eeSFLF_UpdateFolderSizes($eeSubFolderPath);
+		}
+		$eeSFL->eeSFL_UpdateMainFileArray(false);			// Custom Hook
+			$eeMessages[] = 'Folder Deleted';
+			do_action('eeSFL_Hook_Deleted', $eeMessages);
+
+			eeSFL_Debug_Log("DELETE: Folder deletion completed successfully", 'FileOps', $eeSFL->eeListID);
+			return 'SUCCESS';
+
+		} else {
+			eeSFL_Debug_Log("DELETE: Folder delete failed: " . $eeFilePath, 'FileOps', $eeSFL->eeListID);
+			return __('Folder Delete Failed', 'simple-file-list') . ':' . $eeFilePath;
+		}
+
+	} else {
+		eeSFL_Debug_Log("DELETE: Item not found or unknown type: " . $eeFilePath, 'FileOps', $eeSFL->eeListID);
+		return __('Unknown Item', 'simple-file-list') . ':' . $eeFilePath;
+	}
+}
+
+
+/**
+ * Update file nice name
+ *
+ * @param string $eeFileName The file name
+ * @param string|false $eeSubFolder The subfolder path
+ * @param string $eeFileNiceNameNew The new nice name
+ * @return string Success message or empty string
+ */
+function eeSFL_UpdateFileNiceName($eeFileName, $eeSubFolder, $eeFileNiceNameNew) {
+
+	global $eeSFL;
+
+	// Normalize subfolder path
+	$eeSubFolderPath = ($eeSubFolder && $eeSubFolder !== '/') ? $eeSubFolder : '';
+	eeSFL_Debug_Log("EDIT NICE NAME: Normalized subfolder from '$eeSubFolder' to '$eeSubFolderPath'", 'FileOps', $eeSFL->eeListID);
+
+	$eeFileNiceNameNew = trim(sanitize_text_field($eeFileNiceNameNew)); // sanitize_text_field only — esc_textarea() is for HTML output, not DB storage
+
+	if(strlen($eeFileNiceNameNew) < 1) { $eeFileNiceNameNew = ''; }
+
+	$eeSFL->eeSFL_UpdateFileDetail($eeSubFolderPath . $eeFileName, 'FileNiceName', $eeFileNiceNameNew);
+
+	eeSFL_Debug_Log("EDIT: Updated nice name to: '$eeFileNiceNameNew'", 'FileOps', $eeSFL->eeListID);
+
+	return 'Nice Name: ' . $eeFileNiceNameNew;
+}
+
+
+/**
+ * Update file description
+ *
+ * @param string $eeFileName The file name
+ * @param string|false $eeSubFolder The subfolder path
+ * @param string $eeFileDescriptionNew The new description
+ * @return string Success message or empty string
+ */
+function eeSFL_UpdateFileDescription($eeFileName, $eeSubFolder, $eeFileDescriptionNew) {
+
+	global $eeSFL;
+
+	// Normalize subfolder path
+	$eeSubFolderPath = ($eeSubFolder && $eeSubFolder !== '/') ? $eeSubFolder : '';
+	eeSFL_Debug_Log("EDIT DESC: Normalized subfolder from '$eeSubFolder' to '$eeSubFolderPath'", 'FileOps', $eeSFL->eeListID);
+
+	$eeFileDescriptionNew = trim(sanitize_text_field($eeFileDescriptionNew)); // sanitize_text_field only — esc_textarea() is for HTML output, not DB storage
+
+	if(strlen($eeFileDescriptionNew) < 1) { $eeFileDescriptionNew = ''; }
+	if(!strpos($eeFileName, '.')) { $eeFileName .= '/'; } // Folder
+
+	$eeSFL->eeSFL_UpdateFileDetail($eeSubFolderPath . $eeFileName, 'FileDescription', $eeFileDescriptionNew);
+
+	eeSFL_Debug_Log("EDIT: Updated description to: '$eeFileDescriptionNew'", 'FileOps', $eeSFL->eeListID);
+
+	return 'Description: ' . $eeFileDescriptionNew;
+}
+
+
+/**
+ * Update file date added
+ *
+ * @param string $eeFileName The file name
+ * @param string|false $eeSubFolder The subfolder path
+ * @param string $eeDate The new date (YYYY-MM-DD format)
+ * @param array $eeListSettings The list settings
+ * @return array Array with 'success' boolean, 'message' string, and optional 'additionalData' string
+ */
+function eeSFL_UpdateFileDateAdded($eeFileName, $eeSubFolder, $eeDate, $eeListSettings) {
+
+	global $eeSFL;
+
+	// Normalize subfolder path
+	$eeSubFolderPath = ($eeSubFolder && $eeSubFolder !== '/') ? $eeSubFolder : '';
+	eeSFL_Debug_Log("EDIT DATE ADDED: Normalized subfolder from '$eeSubFolder' to '$eeSubFolderPath'", 'FileOps', $eeSFL->eeListID);
+
+	if(strlen($eeDate) < 1) {
+		return array('success' => true, 'message' => '');
+	}
+
+	// Validate date
+	$eeArray = explode('-', $eeDate);
+	if( !checkdate( $eeArray[1], $eeArray[2], $eeArray[0]) ) {
+		eeSFL_Debug_Log("EDIT: Invalid date added format: $eeDate", 'FileOps', $eeSFL->eeListID);
+		return array(
+			'success' => false,
+			'message' => 'Bad Date, Indiana! ' . $eeArray[1] . ', ' . $eeArray[2] . ', ' . $eeArray[0]
+		);
+	}
+
+	// Update the Database
+	$eeSFL->eeSFL_UpdateFileDetail($eeSubFolderPath . $eeFileName, 'FileDateAdded', $eeDate . ' 00:00:00' );
+
+	eeSFL_Debug_Log("EDIT: Updated date added to: $eeDate", 'FileOps', $eeSFL->eeListID);
+
+	$eeAdditionalData = '';
+	if($eeListSettings['ShowFileDateAs'] == 'Added') {
+		$eeAdditionalData = '|Date=' . date_i18n( get_option('date_format'), strtotime( $eeDate ) );
+	}
+
+	return array('success' => true, 'message' => '', 'additionalData' => $eeAdditionalData);
+}
+
+
+/**
+ * Update file date changed
+ *
+ * @param string $eeFileName The file name
+ * @param string|false $eeSubFolder The subfolder path
+ * @param string $eeDate The new date (YYYY-MM-DD format)
+ * @param array $eeListSettings The list settings
+ * @return array Array with 'success' boolean, 'message' string, and optional 'additionalData' string
+ */
+function eeSFL_UpdateFileDateChanged($eeFileName, $eeSubFolder, $eeDate, $eeListSettings) {
+
+	global $eeSFL;
+
+	// Normalize subfolder path
+	$eeSubFolderPath = ($eeSubFolder && $eeSubFolder !== '/') ? $eeSubFolder : '';
+	eeSFL_Debug_Log("EDIT DATE CHANGED: Normalized subfolder from '$eeSubFolder' to '$eeSubFolderPath'", 'FileOps', $eeSFL->eeListID);
+
+	if(strlen($eeDate) < 1) {
+		return array('success' => true, 'message' => '');
+	}
+
+	// Validate date
+	$eeArray = explode('-', $eeDate);
+	if( !checkdate( $eeArray[1], $eeArray[2], $eeArray[0]) ) {
+		eeSFL_Debug_Log("EDIT: Invalid date changed format: $eeDate", 'FileOps', $eeSFL->eeListID);
+		return array(
+			'success' => false,
+			'message' => 'Bad Date, Indiana! ' . $eeArray[1] . ', ' . $eeArray[2] . ', ' . $eeArray[0]
+		);
+	}
+
+	// Update the File
+	$eeDateTime = strtotime($eeDate);
+	$eeFilePath = eeSFL_WP_ROOT . $eeListSettings['FileListDir'] . $eeSubFolderPath . $eeFileName;
+	$eeFileCheck = eeSFL_FileSystem('exists', array('file' => $eeFilePath));
+
+	if($eeFileCheck['success'] && $eeFileCheck['data'] && $eeDateTime) {
+
+		// Touch the file
+		$eeTouchResult = eeSFL_FileSystem('touch', array('file' => $eeFilePath, 'time' => $eeDateTime));
+
+		// Update the Database
+		$eeSFL->eeSFL_UpdateFileDetail($eeSubFolderPath . $eeFileName, 'FileDateChanged', $eeDate . ' 00:00:00' );
+
+		eeSFL_Debug_Log("EDIT: Updated date changed to: $eeDate", 'FileOps', $eeSFL->eeListID);
+
+		$eeAdditionalData = '';
+		if($eeListSettings['ShowFileDateAs'] == 'Changed') {
+			$eeAdditionalData = '|Date=' . date_i18n( get_option('date_format'), strtotime( $eeDate ) );
+		}
+
+		return array('success' => true, 'message' => '', 'additionalData' => $eeAdditionalData);
+	}
+
+	return array('success' => true, 'message' => '');
+}
+
+
+/**
+ * Rename a file
+ *
+ * @param string $eeFileName The current file name
+ * @param string|false $eeSubFolder The subfolder path
+ * @param string $eeFileNameNew The new file name
+ * @param array $eeListSettings The list settings
+ * @return array Array with 'success' boolean and 'message' string
+ */
+function eeSFL_RenameFile($eeFileName, $eeSubFolder, $eeFileNameNew, $eeListSettings) {
+
+	global $eeSFL;
+
+	// Normalize subfolder path
+	$eeSubFolderPath = ($eeSubFolder && $eeSubFolder !== '/') ? $eeSubFolder : '';
+	eeSFL_Debug_Log("EDIT RENAME: Normalized subfolder from '$eeSubFolder' to '$eeSubFolderPath'", 'FileOps', $eeSFL->eeListID);
+
+	eeSFL_Debug_Log("EDIT: Rename requested from '$eeFileName' to '$eeFileNameNew'", 'FileOps', $eeSFL->eeListID);
+
+	$eeFileNameNew = urldecode( $eeFileNameNew );
+	$eeFileNameNew = sanitize_file_name( $eeFileNameNew );
+
+	if( strlen($eeFileNameNew) < 1 ) {
+		eeSFL_Debug_Log("EDIT: Invalid new file name", 'FileOps', $eeSFL->eeListID);
+		return array(
+			'success' => false,
+			'message' => __('Invalid New File Name', 'simple-file-list')
+		);
+	}
+
+	if(strpos($eeFileName, '.') === FALSE) { // Folder
+		$eeFileNameNew = str_replace('.', '_', $eeFileNameNew); // Prevent adding an extension
+		eeSFL_Debug_Log("EDIT: Renaming folder", 'FileOps', $eeSFL->eeListID);
+	} else {
+		// Prevent changing file extension
+		$eePathParts = pathinfo($eeFileName);
+		$eeOldExtension = strtolower($eePathParts['extension']);
+		$eePathParts = pathinfo($eeFileNameNew);
+		$eeNewExtension = strtolower($eePathParts['extension']);
+		if($eeOldExtension != $eeNewExtension) {
+			eeSFL_Debug_Log("EDIT: Rename blocked - extension change not allowed", 'FileOps', $eeSFL->eeListID);
+			return array(
+				'success' => false,
+				'message' => __('Changing the File Extension is Not Allowed', 'simple-file-list')
+			);
+		}
+	}
+
+	// Security check for path traversal
+	$eeSFL->eeSFL_DetectUpwardTraversal($eeListSettings['FileListDir'] . $eeSubFolderPath . $eeFileNameNew );
+
+	// Check for duplicate file
+	if(eeSFL_FileSystem('is_file', array('file' => eeSFL_WP_ROOT . $eeListSettings['FileListDir'] . $eeSubFolderPath . $eeFileNameNew))['data']) {
+		eeSFL_Debug_Log("EDIT: Rename blocked - duplicate name found", 'FileOps', $eeSFL->eeListID);
+		return array(
+			'success' => false,
+			'message' => __('Cannot Change the Name. Item with Same Name Found.', 'simple-file-list')
+		);
+	}
+
+	// Rename file on disk
+	$eeFilePathOld = eeSFL_WP_ROOT . $eeListSettings['FileListDir'] . $eeSubFolderPath . $eeFileName;
+	$eeFilePathNew = eeSFL_WP_ROOT . $eeListSettings['FileListDir'] . $eeSubFolderPath . $eeFileNameNew;
+
+	$eeOldFileCheck = eeSFL_FileSystem('exists', array('file' => $eeFilePathOld));
+	if(!($eeOldFileCheck['success'] && $eeOldFileCheck['data'])) {
+		eeSFL_Debug_Log("EDIT: Rename failed - file not found: $eeFilePathOld", 'FileOps', $eeSFL->eeListID);
+		return array(
+			'success' => false,
+			'message' => __('File Not Found', 'simple-file-list') . ': ' . basename($eeFilePathOld)
+		);
+	}
+
+	if( !eeSFL_FileSystem('move', array('from' => $eeFilePathOld, 'to' => $eeFilePathNew))['success'] ) {
+		eeSFL_Debug_Log("EDIT: Rename failed - could not move file", 'FileOps', $eeSFL->eeListID);
+		return array(
+			'success' => false,
+			'message' => __('Could Not Change the Name', 'simple-file-list') . ' ' . $eeFilePathOld . ' ' . __('to', 'simple-file-list') . ' ' . $eeFilePathNew
+		);
+	}
+
+	// Update database
+	$eeSFL->eeSFL_UpdateFileDetail($eeSubFolderPath . $eeFileName, 'FilePath', $eeSubFolderPath . $eeFileNameNew);
+	eeSFL_Debug_Log("EDIT: Rename successful", 'FileOps', $eeSFL->eeListID);
+
+	return array(
+		'success' => true,
+		'message' => 'Renamed to|' . $eeListSettings['FileListDir'] . $eeFileNameNew
+	);
+}
+
+
+// File Editor Engine
+function eeSFL_FileEditor() {
+
+	global $eeSFL;
+
+	eeSFL_Debug_Log("=== FILE EDITOR START ===", 'Admin', 0);
+
+	// WP Security
+	$nonceCheck = check_ajax_referer( 'eeSFL_ActionNonce', 'eeSecurity', false );
+	eeSFL_Debug_Log("Nonce check result: " . ($nonceCheck ? 'PASS' : 'FAIL'), 'Admin', 0);
+
+	if( !$nonceCheck ) {
+		eeSFL_Debug_Log("ERROR: Security check failed", 'Admin', 0);
+		return 'ERROR 98';
+	}
+
+	// The List ID
+	if( isset($_POST['eeSFL_ID']) && !empty(sanitize_text_field(wp_unslash($_POST['eeSFL_ID']))) ) {
+		$eeSFL->eeListID = filter_var(sanitize_text_field(wp_unslash($_POST['eeSFL_ID'])), FILTER_VALIDATE_INT);
+	} else {
+		eeSFL_Debug_Log("ERROR: Missing List ID", 'Admin', 0);
+		return "Missing ID";
+	}
+
+	eeSFL_Debug_Log("Processing request for List ID: " . $eeSFL->eeListID, 'Admin', $eeSFL->eeListID);
+	$eeSFL->eeSFL_GetSettings($eeSFL->eeListID);
+
+	// Check if we should be doing this
+	if(!is_admin() AND $eeSFL->eeListSettings['AllowFrontManage'] != 'YES') {
+		eeSFL_Debug_Log("ERROR: Front manage not allowed", 'Admin', $eeSFL->eeListID);
+		return;
+	}
+
+	$eeSFL->eeAllFiles = get_option('eeSFL_FileList_' . $eeSFL->eeListID);
+
+	// The Action
+	if( isset($_POST['eeFileAction']) && strlen(sanitize_text_field(wp_unslash($_POST['eeFileAction']))) ) {
+		$eeFileAction = sanitize_text_field(wp_unslash($_POST['eeFileAction']));
+	} else {
+		eeSFL_Debug_Log("ERROR: Missing action", 'Admin', $eeSFL->eeListID);
+		return "Missing the Action";
+	}
+
+	// The Current File Name
+	if( isset($_POST['eeFileName']) && strlen(sanitize_text_field(wp_unslash($_POST['eeFileName']))) ) {
+		$eeFileName = sanitize_text_field(wp_unslash($_POST['eeFileName'])); // sanitize only — esc_textarea() would corrupt names with quotes when matching against the file array
+	} else {
+		eeSFL_Debug_Log("ERROR: Missing file name", 'Admin', $eeSFL->eeListID);
+		return "Missing the File Name";
+	}
+
+	// Are we in a Folder?
+	$eeSubFolder = FALSE;
+	if( isset($_POST['eeSubFolder']) && !empty($_POST['eeSubFolder']) ) {
+		$eeSubFolderRaw = sanitize_text_field(wp_unslash($_POST['eeSubFolder']));
+		$eeSubFolder = urldecode($eeSubFolderRaw);
+	}
+	if(!$eeSubFolder OR $eeSubFolder == '/') { $eeSubFolder = FALSE; }
+
+	eeSFL_Debug_Log("Action: $eeFileAction, File: $eeFileName, SubFolder: " . ($eeSubFolder ? $eeSubFolder : 'ROOT'), 'Admin', $eeSFL->eeListID);
+
+	// ===== DISPATCHER =====
+	// Route to appropriate specialized function
+
+	if($eeFileAction == 'Delete') {
+
+		eeSFL_Debug_Log("Routing to eeSFL_DeleteFile()", 'Admin', $eeSFL->eeListID);
+		return eeSFL_DeleteFile($eeFileName, $eeSubFolder);
+
+	} elseif($eeFileAction == 'Edit') {
+
+		eeSFL_Debug_Log("Routing to Edit functions", 'Admin', $eeSFL->eeListID);
+
+		$eeMessages = array();
+		$eeAdditionalData = '';
+
+		// Nice Name
+		if(isset($_POST['eeFileNiceNameNew']) && $_POST['eeFileNiceNameNew'] != 'false') {
+			$eeFileNiceNameNew = trim(sanitize_text_field(wp_unslash($_POST['eeFileNiceNameNew']))); // sanitize_text_field only — esc_textarea() is for HTML output, not DB storage
+			$eeResult = eeSFL_UpdateFileNiceName($eeFileName, $eeSubFolder, $eeFileNiceNameNew);
+			if($eeResult) { $eeMessages[] = $eeResult; }
+		}
+
+		// Description
+		if(isset($_POST['eeFileDescNew']) && $_POST['eeFileDescNew'] != 'false') {
+			$eeFileDescriptionNew = trim(sanitize_text_field(wp_unslash($_POST['eeFileDescNew']))); // sanitize_text_field only — esc_textarea() is for HTML output, not DB storage
+			$eeResult = eeSFL_UpdateFileDescription($eeFileName, $eeSubFolder, $eeFileDescriptionNew);
+			if($eeResult) { $eeMessages[] = $eeResult; }
+		}
+
+		// Date Added
+		if(isset($_POST['eeFileDateAdded'])) {
+			$eeDate = preg_replace("/[^0-9-]/", "", sanitize_text_field(wp_unslash($_POST['eeFileDateAdded'])));
+			$eeResult = eeSFL_UpdateFileDateAdded($eeFileName, $eeSubFolder, $eeDate, $eeSFL->eeListSettings);
+			if(!$eeResult['success']) {
+				return $eeResult['message'];
+			}
+			if(!empty($eeResult['additionalData'])) {
+				$eeAdditionalData = $eeResult['additionalData'];
+			}
+		}
+
+		// Date Changed
+		if(isset($_POST['eeFileDateChanged'])) {
+			$eeDate = preg_replace("/[^0-9-]/", "", sanitize_text_field(wp_unslash($_POST['eeFileDateChanged'])));
+			$eeResult = eeSFL_UpdateFileDateChanged($eeFileName, $eeSubFolder, $eeDate, $eeSFL->eeListSettings);
+			if(!$eeResult['success']) {
+				return $eeResult['message'];
+			}
+			if(!empty($eeResult['additionalData'])) {
+				$eeAdditionalData = $eeResult['additionalData'];
+			}
+		}
+
+		// Rename (do last)
+		if( isset($_POST['eeFileNameNew']) && strlen(sanitize_text_field(wp_unslash($_POST['eeFileNameNew']))) >= 1 ) {
+			$eeFileNameNew = sanitize_text_field(wp_unslash($_POST['eeFileNameNew']));
+			$eeResult = eeSFL_RenameFile($eeFileName, $eeSubFolder, $eeFileNameNew, $eeSFL->eeListSettings);
+			if(!$eeResult['success']) {
+				return $eeResult['message'];
+			}
+			if($eeResult['message']) {
+				$eeMessages[] = $eeResult['message'];
+			}
+		}
+
+		// Custom Hook
+		do_action('eeSFL_Hook_Edited', $eeMessages);
+
+		eeSFL_Debug_Log("Edit operation completed successfully", 'Admin', $eeSFL->eeListID);
+		return 'SUCCESS' . $eeAdditionalData;
+
+	} else {
+		eeSFL_Debug_Log("ERROR: Unknown action: $eeFileAction", 'Admin', $eeSFL->eeListID);
+		return;
+	}
+}
+
+
+
+// Plugin Version Check
+function eeSFL_VersionCheck() {
+
+	global $wpdb, $eeSFL, $eeSFLU;
+
+	if( !$eeSFL ) { return FALSE; }
+
+	$eeSettings = $eeSFL->eeDefaultListSettings; // Start from scratch and merge-in existing
+
+	// Search for a current or previous Free installation
+	$eeInstalled = get_option('eeSFL_Version');      // Current Free 6.x
+	if(!$eeInstalled) { $eeInstalled = get_option('eeSFL_BASE_Version'); } // Free 6.1.18
+
+	if( $eeInstalled AND version_compare($eeInstalled, eeSFL_Version, '==') ) {
+
+		eeSFL_Debug_Log("Nice! SFL is Up-to-Date :-)", 'Updating');
+
+		eeSFL_EnsureFileListDirExists(1);
+
+		return TRUE;
+
+	} elseif(!$eeInstalled) { // New Install
+
+		eeSFL_Debug_Log("New Installation", 'Updating');
+
+		// Check the File List Directory
+		$eeResult = eeSFL_ValidateFileListDir( $eeSettings['FileListDir'] );
+
+		if($eeResult) {
+
+			if(eeSFL_FileListDirCheck($eeResult)) {
+
+				eeSFL_Debug_Log("The File List Directory is Good", 'Updating');
+
+				// Update Database
+				ksort($eeSettings); // Sort for sanity
+
+				eeSFL_Debug_Log("Updating the Database...", 'Updating');
+
+				$eeSettings['UploadMaxFileSize'] = $eeSFLU->eeSFL_ActualUploadMax();
+				$eeSettings['NotifyMessage'] = $eeSFL->eeNotifyMessageDefault;
+
+				$eeSFL->eeListID = 1;
+				$eeSFL->eeListSettings = $eeSettings;
+
+				update_option('eeSFL_Settings_1', $eeSettings);
+				update_option('eeSFL_Version', eeSFL_Version);
+
+				// Add First File - The Documentation
+				$eeCopyFrom = dirname(dirname(__FILE__)) . '/Simple-File-List.pdf';
+				$eeCopyTo = $eeSFL->eeSFL_GetRootPath() . $eeSettings['FileListDir'] . 'Simple-File-List.pdf';
+				return TRUE;
+
+			} else {
+
+				return FALSE;
+			}
+		}
+
+		return FALSE;
+
+	}
+
+	// Update to Newer Version (from Free 6.1.18)
+	eeSFL_Debug_Log('- Updating SFL Free from ' . $eeInstalled . ' to ' . eeSFL_Version . ' ...', 'Updating');
+
+	// Merge existing list 1 settings into defaults
+	$eeSettings_v6 = get_option('eeSFL_Settings_1');
+	if($eeSettings_v6) {
+		$eeSettings = array_merge($eeSettings, $eeSettings_v6);
+	}
+
+	eeSFL_Debug_Log("Merging-In New Settings ...", 'Updating');
+
+	// Merge any new default settings into existing
+	$eeSettings = array_merge( $eeSFL->eeDefaultListSettings, $eeSettings );
+
+	// 6.1 SortBy migration
+	if($eeSettings['SortBy'] == 'Date') { $eeSettings['SortBy'] = 'Added'; }
+	if($eeSettings['SortBy'] == 'DateMod') { $eeSettings['SortBy'] = 'Changed'; }
+
+	// Cache setting migrations
+	if(isset($eeSettings['ExpireTime'])) {
+		$eeSettings['UseCache'] = $eeSettings['ExpireTime'];
+		unset($eeSettings['ExpireTime']);
+		if(is_numeric($eeSettings['UseCache'])) { $eeSettings['UseCache'] = 'YES'; }
+	}
+	if(isset($eeSettings['UseCache']) && $eeSettings['UseCache'] == 'YES') {
+		$eeSettings['UseCache'] = 'DAY';
+		$eeSettings['UseCacheCron'] = 'NO';
+	}
+
+	// Media settings — ensure defaults exist
+	if(!isset($eeSettings['AudioEnabled'])) { $eeSettings['AudioEnabled'] = 'YES'; }
+	if(!isset($eeSettings['AudioHeight'])) { $eeSettings['AudioHeight'] = 20; }
+
+	// ShowFileDescription → ShowFileDesc rename
+	if(isset($eeSettings['ShowFileDescription'])) {
+		$eeSettings['ShowFileDesc'] = $eeSettings['ShowFileDescription'];
+		unset($eeSettings['ShowFileDescription']);
+	}
+
+	// Check the File List Directory
+	$eeResult = eeSFL_ValidateFileListDir( $eeSettings['FileListDir'] );
+	if($eeResult) {
+		eeSFL_FileListDirCheck($eeResult);
+	}
+
+	// Update Database
+	ksort($eeSettings); // Sort for sanity
+	update_option('eeSFL_Settings_1', $eeSettings);
+
+	// Clean up old options
+	delete_option('eeSFL_Tasks');
+	delete_option('eeSFL_Crons');
+	delete_option('eeSFL_BASE_Version'); // Replaced by eeSFL_Version
+	delete_option('eeSFL_TheLog');
+	delete_option('eeSFL_FREE_Log');
+
+	// Delete ALL transients on version update - reset all temporary data
+	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '\_transient\_eeSFL%' OR option_name LIKE '\_transient\_timeout\_eeSFL%'"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Bulk LIKE-pattern DELETE; no WP API equivalent; caching N/A for DELETE
+	eeSFL_Debug_Log("All SFL transients cleared on version update", 'Updating');
+
+	// Thumbnail directory migration (.thumbnails → _eeSFL_Thumbnails)
+	// The old dot-prefix dir was blocked by nginx on managed hosts (Pressable, etc.)
+	if ( version_compare( $eeInstalled, '6.2.2.5', '<' ) ) {
+
+		eeSFL_Debug_Log( 'Migrating .thumbnails → _eeSFL_Thumbnails ...', 'Updating' );
+
+		$eeFileListDir = isset( $eeSettings['FileListDir'] ) ? $eeSettings['FileListDir'] : '';
+
+		if ( $eeFileListDir ) {
+
+			$eeOldThumbDir = eeSFL_WP_ROOT . $eeFileListDir . '.thumbnails/';
+			$eeNewThumbDir = eeSFL_WP_ROOT . $eeFileListDir . '_eeSFL_Thumbnails/';
+
+			$eeOldExists = eeSFL_FileSystem( 'is_dir', array( 'path' => $eeOldThumbDir ) );
+
+			if ( $eeOldExists && ! empty( $eeOldExists['data'] ) ) {
+
+				$eeMkResult = wp_mkdir_p( $eeNewThumbDir );
+				if ( $eeMkResult ) {
+
+					$eeDirContents = eeSFL_FileSystem( 'dirlist', array( 'path' => $eeOldThumbDir, 'include_hidden' => TRUE, 'recursive' => FALSE ) );
+
+					if ( $eeDirContents && ! empty( $eeDirContents['data'] ) && is_array( $eeDirContents['data'] ) ) {
+						foreach ( $eeDirContents['data'] as $eeThumbFile => $eeFileInfo ) {
+							eeSFL_FileSystem( 'move', array(
+								'from' => $eeOldThumbDir . $eeThumbFile,
+								'to'   => $eeNewThumbDir . $eeThumbFile,
+							) );
+						}
+					}
+
+					// Delete the old hidden directory
+					eeSFL_FileSystem( 'delete', array( 'file' => $eeOldThumbDir, 'recursive' => TRUE ) );
+					eeSFL_Debug_Log( '.thumbnails → _eeSFL_Thumbnails migration complete', 'Updating' );
+					$eeSFL->eeUserMessages['Updating'][] = '- Thumbnail dir migrated from .thumbnails to _eeSFL_Thumbnails';
+
+				} else {
+					eeSFL_Debug_Log( 'Failed to create _eeSFL_Thumbnails dir at: ' . $eeNewThumbDir, 'Updating' );
+				}
+
+			} else {
+				eeSFL_Debug_Log( 'No .thumbnails dir found, skipping', 'Updating' );
+			}
+		}
+	}
+
+	eeSFL_EnsureFileListDirExists(1);
+
+	$eeSFL->eeUserMessages['Updating'][] = '- Plugin database at version ' . eeSFL_Version;
+	update_option('eeSFL_Version', eeSFL_Version);
+
+	return TRUE;
+}
+
+
+
+// Send File via Email AJAX Handler
+function simplefilelist_sendfile_job() {
+
+	global $eeSFLE;
+
+	if(!$eeSFLE) {
+		echo 'ERROR: Email module not loaded';
+		wp_die();
+	}
+
+	$eeResult = $eeSFLE->eeSFLE_SendFilesEmail();
+
+	echo esc_html($eeResult);
+
+	wp_die();
+
+}
+
+
+function simplefilelist_confirm() {
+
+	delete_option('eeSFL_Confirm');
+
+	wp_die();
+
+}
+
+
+function simplefilelist_edit_job() {
+
+	$eeResult = eeSFL_FileEditor();
+
+	echo esc_html($eeResult);
+
+	wp_die();
+
+}
+
+
+function simplefilelist_upload_job() {
+
+	global $eeSFLU;
+
+	// Add debugging for PHP upload configuration
+	if (function_exists('eeSFL_Debug_Log')) {
+		$postMaxSize = ini_get('post_max_size');
+		$uploadMaxFilesize = ini_get('upload_max_filesize');
+		$postContentLength = isset($_SERVER['CONTENT_LENGTH']) ? intval($_SERVER['CONTENT_LENGTH']) : 0;
+
+		eeSFL_Debug_Log("=== UPLOAD JOB STARTED ===", 'Upload');
+		eeSFL_Debug_Log("PHP post_max_size: $postMaxSize", 'Upload');
+		eeSFL_Debug_Log("PHP upload_max_filesize: $uploadMaxFilesize", 'Upload');
+		eeSFL_Debug_Log("Actual POST Content-Length: " . number_format($postContentLength) . " bytes", 'Upload');
+
+		// Convert post_max_size to bytes for comparison
+		$postMaxBytes = wp_convert_hr_to_bytes($postMaxSize);
+		if ($postContentLength > $postMaxBytes) {
+			eeSFL_Debug_Log("WARNING: POST content exceeds PHP post_max_size limit by " . number_format($postContentLength - $postMaxBytes) . " bytes", 'UPLOAD');
+			eeSFL_Debug_Log("Consider increasing PHP post_max_size in php.ini or server configuration", 'Upload');
+		}
+	}
+
+	$eeResult = $eeSFLU->eeSFL_FileUploader();
+
+	if (function_exists('eeSFL_Debug_Log')) {
+		$user_id = get_current_user_id();
+		$workflow_status = ($eeResult === 'SUCCESS') ? 'completed successfully' : 'failed';
+
+		eeSFL_Debug_Log("Upload result: $eeResult", 'Upload');
+		eeSFL_Debug_Log("User workflow: Upload $workflow_status by user $user_id", 'UX');
+
+		if ($eeResult === 'SUCCESS') {
+			eeSFL_Debug_Log("Next steps: File will be indexed and displayed in list", 'UX');
+		} else {
+			eeSFL_Debug_Log("User may need assistance with upload issue: $eeResult", 'UX');
+		}
+
+		eeSFL_Debug_Log("=== UPLOAD JOB COMPLETED ===", 'Upload');
+	}
+
+	echo esc_html($eeResult);
+
+	wp_die();
+
+}
+
+
+
+function eeSFL_RegisterAssets() {
+
+	// Register All CSS
+    wp_register_style( 'ee-simple-file-list-css', plugin_dir_url(__DIR__) . 'css/styles.css', '', eeSFL_Version);
+	wp_register_style( 'ee-simple-file-list-css-theme-dark', plugins_url('css/styles-theme-dark.css', __DIR__), '', eeSFL_Version );
+	wp_register_style( 'ee-simple-file-list-css-theme-light', plugins_url('css/styles-theme-light.css', __DIR__), '', eeSFL_Version );
+    wp_register_style( 'ee-simple-file-list-css-flex', plugins_url('css/styles-flex.css', __DIR__), '', eeSFL_Version );
+    wp_register_style( 'ee-simple-file-list-css-tiles', plugins_url('css/styles-tiles.css', __DIR__), '', eeSFL_Version );
+	wp_register_style( 'ee-simple-file-list-css-table', plugins_url('css/styles-table.css', __DIR__), '', eeSFL_Version );
+	wp_register_style( 'ee-simple-file-list-css-upload', plugins_url('css/styles-upload-form.css', __DIR__), '', eeSFL_Version );
+	wp_register_style( 'ee-simple-file-list-css-media', plugins_url('css/ee-media-styles.css', __DIR__), '', eeSFL_Version );
+
+	// Register JavaScripts
+	wp_register_script( 'ee-simple-file-list-js-head', plugin_dir_url(__DIR__) . 'js/ee-head.js', array(), eeSFL_Version, false );
+	wp_register_script( 'ee-simple-file-list-js-footer', plugin_dir_url(__DIR__) . 'js/ee-footer.js', array(), eeSFL_Version, true );
+	wp_register_script( 'ee-simple-file-list-js-edit-file', plugin_dir_url(__DIR__) . 'js/ee-edit-file.js', array(), eeSFL_Version, true );
+	wp_register_script( 'ee-simple-file-list-js-uploader', plugin_dir_url(__DIR__) . 'js/ee-uploader.js', array(), eeSFL_Version, true );
+	// wp_register_script( 'ee-simple-file-list-js-media', plugin_dir_url(__DIR__) . 'js/ee-media-scripts-footer.js', array(), eeSFL_Version, true );
+	wp_register_script( 'ee-simple-file-list-js-email', plugin_dir_url(__DIR__) . 'js/ee-email.js', array(), eeSFL_Version, true );
+
+}
+
+
+function eeSFL_ActionPluginLinks( $links ) {
+
+	$eeLinks = array(
+		'<a href="' . admin_url( 'admin.php?page=' . eeSFL_PluginSlug ) . '">' . __('Admin List', 'simple-file-list') . '</a>',
+		'<a href="' . admin_url( 'admin.php?page=' . eeSFL_PluginSlug . '&tab=settings' ) . '">' . __('Settings', 'simple-file-list') . '</a>'
+	);
+	return array_merge( $links, $eeLinks );
+}
+
+
+// Load Front-side <head>
+function eeSFL_Enqueue() {
+
+	global $eeSFL_VarsForJS;
+
+	$eeDependents = array('jquery'); // Requires jQuery
+	wp_enqueue_style('ee-simple-file-list-css');
+	wp_enqueue_style('ee-simple-file-list-css-media');
+	wp_enqueue_script('ee-simple-file-list-js-head', plugin_dir_url(__DIR__) . 'js/ee-head.js', $eeDependents, eeSFL_Version, false); // Head
+	wp_enqueue_script('ee-simple-file-list-js-foot', plugin_dir_url(__DIR__) . 'js/ee-footer.js', $eeDependents, eeSFL_Version, TRUE); // Footer
+	wp_enqueue_script('ee-simple-file-list-js-email', plugin_dir_url(__DIR__) . 'js/ee-email.js', $eeDependents, eeSFL_Version, TRUE); // Email
+	wp_localize_script( 'ee-simple-file-list-js-foot', 'eesfl_vars', $eeSFL_VarsForJS );
+
+	// Pass variables
+	wp_localize_script( 'ee-simple-file-list-js-foot', 'eesfl_vars', $eeSFL_VarsForJS );
+
+}
+
+
+
+// Custom Hooks
+function eeSFL_UploadCompleted() {
+    do_action('eeSFL_UploadCompleted'); // To be fired post-upload
+}
+function eeSFL_UploadCompletedAdmin() {
+    do_action('eeSFL_UploadCompletedAdmin'); // To be fired post-upload
+}
+
+
+
+// Admin <head>
+function eeSFL_AdminHead($eeHook) {
+
+	global $eeSFL, $eeSFL_VarsForJS, $eeSFLA;
+
+	$deps = array('jquery');
+
+	// wp_die($eeHook); // Check the hook
+    $eeHooks = array(
+    	'toplevel_page_' . eeSFL_PluginSlug,
+    	'file-list-pro_page_ee-simple-file-list-access'
+    );
+
+    if(in_array($eeHook, $eeHooks)) {
+
+        // Admin Styles
+        wp_enqueue_style( 'ee-simple-file-list-css-admin', plugins_url('css/admin.css', __DIR__), '', eeSFL_Version );
+
+        // CSS
+        wp_enqueue_style( 'ee-simple-file-list-css', plugins_url('css/styles.css', __DIR__), '', eeSFL_Version );
+
+        // List Style - Table Only
+        wp_enqueue_style( 'ee-simple-file-list-css-table', plugins_url('css/styles-table.css', __DIR__), '', eeSFL_Version );
+
+        // Media Player CSS
+        wp_enqueue_style( 'ee-simple-file-list-css-media', plugins_url('css/ee-media-styles.css', __DIR__), '', eeSFL_Version );
+
+        // Javascript
+        wp_enqueue_script('ee-simple-file-list-js-head', plugin_dir_url(__DIR__) . 'js/ee-head.js', $deps, eeSFL_Version, FALSE);
+		wp_enqueue_script('ee-simple-file-list-js-back', plugin_dir_url(__DIR__) . 'js/ee-back.js', $deps, eeSFL_Version, FALSE);
+        wp_enqueue_script('ee-simple-file-list-js-foot', plugin_dir_url(__DIR__) . 'js/ee-footer.js', $deps, eeSFL_Version, TRUE);
+        wp_enqueue_script('ee-simple-file-list-js-edit-file', plugin_dir_url(__DIR__) . 'js/ee-edit-file.js',$deps, eeSFL_Version, TRUE);
+        wp_enqueue_script('ee-simple-file-list-js-uploader', plugin_dir_url(__DIR__) . 'js/ee-uploader.js', $deps, eeSFL_Version, TRUE);
+        wp_enqueue_script('ee-simple-file-list-js-media', plugin_dir_url(__DIR__) . 'js/ee-media-scripts-footer.js', $deps, eeSFL_Version, TRUE);
+        wp_enqueue_script('ee-simple-file-list-js-email', plugin_dir_url(__DIR__) . 'js/ee-email.js', $deps, eeSFL_Version, TRUE);
+
+		// Pass variables
+		wp_localize_script('ee-simple-file-list-js-head', 'eeSFL_JS', array( 'pluginsUrl' => plugins_url() ) );
+		wp_localize_script( 'ee-simple-file-list-js-foot', 'eesfl_vars', $eeSFL_VarsForJS );
+
+		// Pass variables for media player in admin
+		$eeSFLM_VarsForJS = array(
+			'eePlayLabel' => __('Play', 'simple-file-list'),
+			'eeBrowserWarning' => __('Browser is Not Compatible', 'simple-file-list'),
+			'eeAudioEnabled' => 'YES', // Default to enabled in admin
+			'eeAudioHeight' => 20 // Default height
+		);
+
+		// Use actual settings if available
+		if ($eeSFL && isset($eeSFL->eeListSettings['AudioEnabled'])) {
+			$eeSFLM_VarsForJS['eeAudioEnabled'] = $eeSFL->eeListSettings['AudioEnabled'];
+			$eeSFLM_VarsForJS['eeAudioHeight'] = $eeSFL->eeListSettings['AudioHeight'];
+		}
+
+		wp_localize_script( 'ee-simple-file-list-js-media', 'eeSFLM_Vars', $eeSFLM_VarsForJS );
+
+
+		if($eeSFLA) {
+
+			$eeSFLA_URL = plugins_url() . '/'. $eeSFLA->eeSFLA_Slug . '/';
+
+			// exit($eeSFLA_URL);
+
+			wp_enqueue_style( 'eesfla-style', plugins_url( $eeSFLA_URL . 'css/style.css', __DIR__ ), '', eeSFLA_Version );
+			wp_enqueue_script('eesfla-head-js', plugins_url( $eeSFLA_URL . 'js/eeSFLA_scripts-head.js', __DIR__), $deps, eeSFLA_Version, false );
+			wp_enqueue_script('eesfla-footer-js', plugins_url( $eeSFLA_URL . 'js/eeSFLA_scripts-footer.js', __DIR__), $deps, eeSFLA_Version, true );
+		}
+
+
+    }
+}
+
+
+
+// Admin Pages
+function eeSFL_AdminMenu() {
+
+	global $eeSFL, $eeSFLA;
+
+	// Only include when accessing the plugin admin pages
+	if( isset($_GET['page']) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page param for admin menu routing, not form submission
+
+		 $eeOutput = '<!-- Simple File List Admin -->';
+		eeSFL_Debug_Log("Admin Menu Loading ...", 'Loading');
+
+		include_once($eeSFL->eeEnvironment['pluginDir'] . 'includes/ee-admin-page.php'); // Admin's List Management Page
+
+	}
+
+	// Admin Menu Visibility
+	if($eeSFLA) {
+
+		 $eeCapability = 'activate_plugins';
+
+	} else {
+
+		if(!isset($eeSFL->eeListSettings['AdminRole'])) { // First Run
+			$eeSFL->eeListSettings['AdminRole'] = 5;
+		}
+
+		switch ($eeSFL->eeListSettings['AdminRole']) {
+		    case 1:
+		        $eeCapability = 'read';
+		        break;
+		    case 2:
+		        $eeCapability = 'edit_posts';
+		        break;
+		    case 3:
+		        $eeCapability = 'publish_posts';
+		        break;
+		    case 4:
+		        $eeCapability = 'edit_others_pages';
+		        break;
+		    case 5:
+		        $eeCapability = 'activate_plugins';
+		        break;
+			default:
+				$eeCapability = 'edit_posts';
+		}
+	}
+
+	// Publish capability as a global so companion plugins (e.g. Tools) can use it
+	global $eeSFL_Capability;
+	$eeSFL_Capability = $eeCapability;
+
+	// The Admin Menu
+	$eeAdminPageHook = add_menu_page(
+		__('Simple File List', 'simple-file-list'), // Page Title - Defined at the top of this file
+		__('File List', 'simple-file-list'), // Menu Title
+		$eeCapability, // User status reguired to see the menu
+		eeSFL_PluginSlug, // Slug
+		'eeSFL_BackEnd', // Function that displays the menu page
+		'dashicons-index-card' // Icon used
+	);
+
+}
+
+
+// =============================================================================
+// SET ADMIN PAGE TITLE
+// =============================================================================
+
+// Set Admin Title
+function eeSFL_SetAdminTitle() {
+
+	global $title;
+	$current_screen = get_current_screen();
+
+	if ($current_screen && $current_screen->id === 'toplevel_page_' . eeSFL_PluginSlug) {
+		$title = __('Simple File List', 'simple-file-list');
+	}
+}
+
+// =============================================================================
+// ADMIN DASHBOARD WIDGET
+// =============================================================================
+
+// Returns the WP capability string that matches the AdminRole setting for List 1,
+// mirroring the same switch used in eeSFL_AdminMenu().
+function eeSFL_GetAdminCapability() {
+
+	global $eeSFLA;
+
+	if ( $eeSFLA ) {
+		return 'activate_plugins';
+	}
+
+	$settings  = get_option( 'eeSFL_Settings_1', array() );
+	$admin_role = isset($settings['AdminRole']) ? (int) $settings['AdminRole'] : 5;
+
+	switch ( $admin_role ) {
+		case 1: return 'read';
+		case 2: return 'edit_posts';
+		case 3: return 'publish_posts';
+		case 4: return 'edit_others_pages';
+		case 5: return 'activate_plugins';
+		default: return 'edit_posts';
+	}
+}
+
+
+// Returns the raw file list array for a given list ID.
+// Used by companion plugins (e.g. Tools) to inspect the stored file array.
+function eeSFL_GetRawFileList( $list_id = 1 ) {
+	$list_id = absint( $list_id );
+	if ( $list_id < 1 ) { $list_id = 1; }
+	$file_list = get_option( 'eeSFL_FileList_' . $list_id );
+	return is_array( $file_list ) ? $file_list : array();
+}
+
+
+
+
+
 
 ?>

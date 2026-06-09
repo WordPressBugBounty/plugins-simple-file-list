@@ -1,14 +1,14 @@
 /*
-// Simple File List Pro - Copyright 2022
+// Simple File List - Copyright 2026
 // Author: Mitchell Bennis | support@simplefilelist.com | https://simplefilelist.com
-// License: EULA | https://simplefilelist.com/end-user-license-agreement/
-// All changes to, modifications to, or re-uses of this script are prohibited without prior consent.
+// License: GPLv2 or later | https://www.gnu.org/licenses/gpl-2.0.html
 */
 
 
 /* FILE LIST CONTAINER */
 .eeSFL {
 	box-sizing: border-box;
+	clear: both;
 }
 
 
@@ -36,7 +36,7 @@
 }
 .eeSFL_BreadCrumb .eeSFL_Crumb a:hover {
 	text-decoration: none;
-	background-color: var(--ee-color-action-link-background-hover);	
+	background-color: var(--ee-color-action-link-background-hover);
 	color: var(--ee-color-action-link-text-hover);
 }
 .eeSFL_BreadCrumb .eeSFL_Crumb:last-child {
@@ -123,8 +123,8 @@
 .eeSFL_Modal .eeSFL_ModalBody {
 	position: fixed;
 	z-index: 100;
-	top: 10em;
-	bottom: 10em;
+	top: 5em;
+	bottom: 5em;
 	right: 20%;
 	left: 20%;
 	padding: 2em 3em;
@@ -219,6 +219,8 @@
 
 
 
+
+
 .eeSFL_ResultsNotification {
 	margin: .25em 0;
 	padding: 3px 6px;
@@ -228,13 +230,13 @@
 	color: #333;
 }
 .eeSFL_ResultsNotification_errors {
-	background-color: #ffcccc;	
+	background-color: #ffcccc;
 }
 .eeSFL_ResultsNotification_warnings {
-	background-color: #ffe8b1;	
+	background-color: #ffe8b1;
 }
 .eeSFL_ResultsNotification_messages {
-	background-color: #dcffdc;	
+	background-color: #dcffdc;
 }
 .eeSFL_ResultsNotification ul {
 	line-height: 1;
@@ -242,6 +244,12 @@
 	padding: .5em;
 }
 .eeSFL_ResultsNotification ul li {
+}
+
+
+#eeSFLE_SendMoreFiles table {
+	width: 100%;
+	margin-bottom: 1em;
 }
 
 
@@ -303,8 +311,8 @@
 }
 
 .eeHide { display: none; }
- 
-.eeSFL_FileRenameEntry, 
+
+.eeSFL_FileRenameEntry,
 .eeOldFileName,
 .eeSFL_SavedDesc { display: none !important; }
 

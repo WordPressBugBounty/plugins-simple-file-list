@@ -1,175 +1,272 @@
 <?php
-
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
-if ( ! wp_verify_nonce( $eeSFL_Nonce, 'eeInclude' )) exit('ERROR 98'); // Exit if nonce fails
+// Simple File List - Copyright 2026
+// Author: Mitchell Bennis | support@simplefilelist.com | https://simplefilelist.com
+// License: GPLv2 or later | https://www.gnu.org/licenses/gpl-2.0.html
 
-$eeFileID = 0; // Assign an ID number to each row
+
+// Pre-filter files for RESTRICTED/USER mode to check if any will be displayed
+$eeSFLA_HasAccessibleFiles = false;
+if($eeSFLA && !is_admin() &&
+   isset($eeSFL->eeListSettings['Mode']) &&
+   ($eeSFL->eeListSettings['Mode'] == 'RESTRICTED' || $eeSFL->eeListSettings['Mode'] == 'USER')) {
+
+    // Check if at least one file passes the firewall
+    foreach($eeSFL->eeDisplayFiles as $eeFileArray) {
+        if($eeSFLA->eeSFLA_FileFirewall($eeFileArray) !== FALSE) {
+            $eeSFLA_HasAccessibleFiles = true;
+            break;
+        }
+    }
+
+    // If no accessible files, don't render the table at all
+    if(!$eeSFLA_HasAccessibleFiles) {
+        return;
+    }
+}
 
 // TABLE HEAD ==================================================================================================
 
-$eeOutput .= '<table class="eeFiles">';
+ $eeOutput .= '<table class="eeFiles">';
 
-if($eeSFL_BASE->eeListSettings['ShowHeader'] == 'YES' OR $eeAdmin) { $eeOutput .= '<thead><tr>';
+if($eeSFL->eeListSettings['ShowHeader'] == 'YES' OR $eeAdmin) {  $eeOutput .= '<thead><tr>';
 
-	if($eeAdmin OR $eeSFL_BASE->eeListSettings['ShowFileThumb'] == 'YES') {
+	// Bulk Editing
+	if( ($eeShowOps OR $eeSFL->eeListSettings['AllowBulkFileDownload'] == 'YES') AND !$eeShowingResults) {
+		 $eeOutput .= '<th class="eeSFL_BulkEdit">
+			<input type="checkbox" id="eeSFL_BulkEditAll" name="eeBulkEditAll" value="YES"/></th>';
+	}
 
-		$eeOutput .= '<th class="eeSFL_Thumbnail">';
+	if($eeAdmin OR $eeSFL->eeListSettings['ShowFileThumb'] == 'YES') {
 
-		if($eeSFL_BASE->eeListSettings['LabelThumb']) { $eeOutput .= stripslashes($eeSFL_BASE->eeListSettings['LabelThumb']); }
-			else { $eeOutput .= __('Thumb', 'simple-file-list'); }
+		 $eeOutput .= '<th class="eeSFL_Thumbnail">';
 
-		$eeOutput .= '</th>';
+		if($eeSFL->eeListSettings['LabelThumb']) {  $eeOutput .= stripslashes($eeSFL->eeListSettings['LabelThumb']); }
+			else {  $eeOutput .= __('Thumb', 'simple-file-list'); }
+
+		 $eeOutput .= '</th>';
 	}
 
 
-	$eeOutput .= '<th class="eeSFL_FileName">';
+	 $eeOutput .= '<th class="eeSFL_FileName">';
 
-	if($eeSFL_BASE->eeListSettings['LabelName']) { $eeOutput .= stripslashes($eeSFL_BASE->eeListSettings['LabelName']); }
-		else { $eeOutput .= __('Name', 'simple-file-list'); }
+	if($eeSFL->eeListSettings['LabelName']) {  $eeOutput .= stripslashes($eeSFL->eeListSettings['LabelName']); }
+		else {  $eeOutput .= __('Name', 'simple-file-list'); }
 
-	$eeOutput .= '</th>';
+	 $eeOutput .= '</th>';
 
 
-	if($eeAdmin OR $eeSFL_BASE->eeListSettings['ShowFileSize'] == 'YES') {
+	if($eeAdmin OR $eeSFL->eeListSettings['ShowFileSize'] == 'YES') {
 
-		$eeOutput .= '<th class="eeSFL_FileSize">';
+		 $eeOutput .= '<th class="eeSFL_FileSize">';
 
-		if($eeSFL_BASE->eeListSettings['LabelSize']) { $eeOutput .= stripslashes($eeSFL_BASE->eeListSettings['LabelSize']); }
-			else { $eeOutput .= __('Size', 'simple-file-list'); }
+		if($eeSFL->eeListSettings['LabelSize']) {  $eeOutput .= stripslashes($eeSFL->eeListSettings['LabelSize']); }
+			else {  $eeOutput .= __('Size', 'simple-file-list'); }
 
-		$eeOutput .= '</th>';
+		 $eeOutput .= '</th>';
 	}
 
 
-	if($eeAdmin OR $eeSFL_BASE->eeListSettings['ShowFileDate'] == 'YES') {
+	if($eeAdmin OR $eeSFL->eeListSettings['ShowFileDate'] == 'YES') {
 
-		$eeOutput .= '<th class="eeSFL_FileDate">';
+		 $eeOutput .= '<th class="eeSFL_FileDate">';
 
-		if($eeSFL_BASE->eeListSettings['LabelDate']) { $eeOutput .= stripslashes($eeSFL_BASE->eeListSettings['LabelDate']); }
-			else { $eeOutput .= __('Date', 'simple-file-list'); }
+		if($eeSFL->eeListSettings['LabelDate']) {  $eeOutput .= stripslashes($eeSFL->eeListSettings['LabelDate']); }
+			else {  $eeOutput .= __('Date', 'simple-file-list'); }
 
-		$eeOutput .= '</th>';
+		 $eeOutput .= '</th>';
 	}
 
 
-	$eeOutput .= '</tr>
+	 $eeOutput .= '</tr>
 
 	</thead>';
 }
 
-$eeOutput .= '
+ $eeOutput .= '
 
 <tbody>';
 
 
-$eeSFL_BASE->eeLog[eeSFL_BASE_Go]['notice'][] = 'Listing Files in Table View...';
+eeSFL_Debug_Log("Listing Files in Table View...", 'General');
+
+// echo '<pre>'; print_r($eeSFL->eeAllFiles); echo '</pre>'; exit;
 
 // Loop through array
-foreach($eeSFL_BASE->eeAllFiles as $eeFileKey => $eeFileArray) { // <<<---------------------------- BEGIN FILE LIST LOOP ----------------<<<
-
-	// echo '<pre>'; print_r($eeFileArray); echo '</pre>'; exit;
+foreach($eeSFL->eeDisplayFiles as $eeFileID => $eeFileArray) { // <<<---------------------------- BEGIN FILE LIST LOOP ----------------<<<
 
 	// Populate our class properties for this file
-	if( $eeSFL_BASE->eeSFL_ProcessFileArray($eeFileArray) === FALSE ) { continue; } // Skip This File
+	if( $eeSFL->eeSFL_ProcessFileArray($eeFileArray, $eeSFL_HideName, $eeSFL_HideType) ) {
 
-	if( $eeSFL_BASE->eeIsFile === TRUE ) {
+		// Extension Check
+		if($eeSFLA AND !is_admin() ) {
+			if( $eeSFLA->eeSFLA_FileFirewall($eeFileArray) === FALSE ) { continue; } // Skip this file if FALSE
+		}
 
-		$eeFileID ++;
+		// Extension Check
+		if(!$eeListPosition AND $eeListPosition !== 0) { // eeSFLS Pagination
+			// $eeListPosition = $eeFileID; // Get the first key
+		}
 
 		// Start The List --------------------------------------------------------------
 
-		$eeOutput .= '
+		 $eeOutput .= '
 
-		<tr class="eeSFL_Item" id="eeSFL_FileID-' . $eeFileID . '">'; // Add an ID to use in javascript
+		<tr id="eeSFL_FileID-' . $eeFileID . '" class="eeSFL_Item">';
+
+
+		// Bulk Editing
+		if($eeShowOps OR $eeSFL->eeListSettings['AllowBulkFileDownload'] == 'YES') {
+			 $eeOutput .= '
+			<td class="eeSFL_BulkEdit">';
+			 $eeOutput .= '<input type="checkbox" id="eeSFL_BulkEdit_' . $eeFileID . '"  class="eeSFL_BulkEditCheck" name="eeBulkEdit" value="' . $eeFileID . '"/></td>';
+		}
 
 
 		// Thumbnail
-		if($eeAdmin OR $eeSFL_BASE->eeListSettings['ShowFileThumb'] == 'YES') {
+		if($eeSFL->eeListSettings['ShowFileThumb'] == 'YES') {
 
-			$eeOutput .= '<td class="eeSFL_Thumbnail">';
+			 $eeOutput .= '
+			<td class="eeSFL_Thumbnail">';
 
-			if($eeSFL_BASE->eeFileThumbURL) { $eeOutput .= '<a href="' . $eeSFL_BASE->eeFileURL .  '"';
+			if($eeSFL->eeFileThumbURL) {  $eeOutput .= '<a href="' . $eeSFL->eeFileURL .  '"';
 
-				$eeOutput .= '><img src="' . $eeSFL_BASE->eeFileThumbURL . '" width="64" height="64" alt="Thumb" /></a>'; }
+				if($eeSFL->eeIsFile === TRUE) {  $eeOutput .= ' target="_blank"'; }
 
-			$eeOutput .= '</td>';
+				 $eeOutput .= '><img src="' . $eeSFL->eeFileThumbURL . '" width="64" height="64" alt="Thumb" /></a>'; }
+
+				 $eeOutput .= '</td>';
 		}
 
 
 		// NAME
-		$eeOutput .= '<td class="eeSFL_FileName">';
+		 $eeOutput .= '
+		<td class="eeSFL_FileNameCell eeSFL_FileName">';
 
-		if($eeSFL_BASE->eeFileURL) {
+		if($eeSFL->eeFileURL) {
 
-			$eeOutput .= '
+			if($eeSFL->eeIsFolder) {
+				 $eeOutput .= '
+				<span class="eeSFL_FilePath eeSFL_IsFolder eeHide">' . $eeSFL->eeFilePath . '</span>';
+			}
 
-			<span class="eeSFL_RealFileName eeHide">' . $eeSFL_BASE->eeRealFileName . '</span>
-			<span class="eeSFL_FileNiceName eeHide">' . $eeSFL_BASE->eeFileNiceName . '</span>
-			<span class="eeSFL_FileMimeType eeHide">' . $eeSFL_BASE->eeFileMIME . '</span>
+			// Proper Path for Search Results
+			if(isset($_POST['eeSFLS_Searching'])) {
+				// Verify nonce for search form submission (Missing nonce security)
+				if (!wp_verify_nonce(isset($_POST['_wpnonce']) ? sanitize_text_field(wp_unslash($_POST['_wpnonce'])) : '', 'ee-search-form') && !is_admin()) {
+					// Skip search result path display if nonce verification fails
+				} else {
+					$eePathInfo = pathinfo($eeSFL->eeFilePath);
+					$eePath = $eePathInfo['dirname'];
+					if($eePath != '.') {
+						 $eeOutput .= '
+						<span class="eeSFL_RealFilePath eeHide">' . $eePath . '/</span>';
+					}
+				}
+			}
 
-			<p class="eeSFL_FileLink"><a class="eeSFL_FileName" href="' . $eeSFL_BASE->eeFileURL .  '" target="_blank">' . stripslashes($eeSFL_BASE->eeFileName) . '</a></p>';
+			 $eeOutput .= '
+			<span class="eeSFL_RealFileName eeHide">' . $eeSFL->eeRealFileName . '</span>
+			<span class="eeSFL_FileNiceName eeHide">' . $eeSFL->eeFileNiceName . '</span><p class="eeSFL_FileLink">
+			<span class="eeSFL_FileMimeType eeHide">' . $eeSFL->eeFileMIME . '</span>';
 
+			if($eeSFL->eeListSettings['ShowFileThumb'] == 'NO' AND $eeSFL->eeIsFolder) {  $eeOutput .= '&#128193; '; }
 
+			// Extension Check
+			if( isset($_POST['eeSFLS_Searching']) ) {
+				// Verify nonce for search form submission (Missing nonce security)
+				if (!wp_verify_nonce(isset($_POST['_wpnonce']) ? sanitize_text_field(wp_unslash($_POST['_wpnonce'])) : '', 'ee-search-form') && !is_admin()) {
+					// Skip search path display if nonce verification fails
+				} else {
+					 $eeOutput .= $eeSFLS->eeSFLS_DisplaySearchPath($eeSFL->eeFilePath);
+				}
+			}
+
+			 $eeOutput .= '<a class="eeSFL_FileName" href="' . $eeSFL->eeFileURL .  '"';
+
+			if($eeSFL->eeIsFile === TRUE) {  $eeOutput .= ' target="_blank"'; }
+
+			 $eeOutput .= '>' . stripslashes($eeSFL->eeFileName) . '</a>';
+
+			 $eeOutput .= '</p>';
 
 			// Show File Description
-			if(!$eeAdmin AND $eeSFL_BASE->eeListSettings['ShowFileDesc'] == 'NO') { $eeClass = 'eeHide'; }
+			if(!$eeAdmin AND $eeSFL->eeListSettings['ShowFileDesc'] == 'NO') { $eeClass = 'eeHide'; }
 
 			// This is always here in case of editing, but hidden if empty
-			$eeOutput .= '<p class="eeSFL_FileDesc ' . $eeClass . '">' . stripslashes($eeSFL_BASE->eeFileDescription) . '</p>';
+			 $eeOutput .= '
+			<p class="eeSFL_FileDesc ' . $eeClass . '">' . stripslashes($eeSFL->eeFileDescription) . '</p>';
 
 
 			// Submitter Info
 			$eeShowIt = FALSE;
-			if($eeAdmin AND $eeThisUser != $eeSFL_BASE->eeFileOwner) {
+			if($eeAdmin AND $eeThisUser != $eeSFL->eeFileOwner) {
 				$eeShowIt = TRUE;
-			} elseif($eeSFL_BASE->eeListSettings['ShowSubmitterInfo'] == 'YES' ) {
-				if($eeThisUser AND $eeThisUser != $eeSFL_BASE->eeFileOwner) {
+			} elseif($eeSFL->eeListSettings['ShowSubmitterInfo'] == 'YES' ) {
+				if($eeThisUser AND $eeThisUser != $eeSFL->eeFileOwner) {
 					$eeShowIt = TRUE;
 				} elseif( !$eeThisUser ) { // Not logged in
 					$eeShowIt = TRUE;
 				}
 			}
-			if($eeShowIt AND $eeSFL_BASE->eeFileSubmitterName) {
-				$eeOutput .= '<p class="eeSFL_FileSubmitter"><span>' . $eeSFL_BASE->eeListSettings['LabelOwner'] . ': </span>
-					<a href="mailto:' . $eeSFL_BASE->eeFileSubmitterEmail . '">' . stripslashes($eeSFL_BASE->eeFileSubmitterName) . '</a></p>';
+			if($eeShowIt AND $eeSFL->eeFileSubmitterName) {
+				 $eeOutput .= '<p class="eeSFL_FileSubmitter"><span>' . $eeSFL->eeListSettings['LabelOwner'] . ': </span>';
+				if($eeAdmin OR $eeSFL->eeListSettings['ShowSubmitterEmail'] == 'YES') {
+					 $eeOutput .= '<a href="mailto:' . $eeSFL->eeFileSubmitterEmail . '">' . stripslashes($eeSFL->eeFileSubmitterName) . '</a>';
+				} else {
+					 $eeOutput .= stripslashes($eeSFL->eeFileSubmitterName);
+				}
+				 $eeOutput .= '</p>';
 			}
 			$eeShowIt = FALSE;
 
 
 			// File Actions
-			$eeOutput .= $eeSFL_BASE->eeSFL_ReturnFileActions($eeFileID);
+			 $eeOutput .= $eeSFL->eeSFL_ReturnFileActions($eeFileID, $eeFileArray);
 
 
 
-		$eeOutput .= '</td>';
+		 $eeOutput .= '</td>';
 
 
 
 		// File Size
-		if($eeAdmin OR $eeSFL_BASE->eeListSettings['ShowFileSize'] == 'YES') {
+		if($eeAdmin OR $eeSFL->eeListSettings['ShowFileSize'] == 'YES') {
 
-			$eeOutput .= '<td class="eeSFL_FileSize">' . $eeSFL_BASE->eeFileSize . '</td>';
+			 $eeOutput .= '
+			<td class="eeSFL_FileSize">';
+
+			if($eeSFL->eeIsFile) {
+
+				 $eeOutput .= $eeSFL->eeFileSize;
+
+			} else {
+
+				 $eeOutput .= '<span class="eeSFL_Count">' . $eeSFL->eeItemCount . '</span> ' . __('Items', 'simple-file-list');
+				if($eeSFL->eeListSettings['ShowFolderSize'] == 'YES') {  $eeOutput .= '<br />' . $eeSFL->eeFileSize; }
+			}
+
+			 $eeOutput .= '</td>';
 		}
 
 
 		// File Modification Date
-		if($eeAdmin OR $eeSFL_BASE->eeListSettings['ShowFileDate'] == 'YES') {
+		if($eeAdmin OR $eeSFL->eeListSettings['ShowFileDate'] == 'YES') {
 
-			$eeOutput .= '<td class="eeSFL_FileDate">' . $eeSFL_BASE->eeFileDate . '</td>';
+			 $eeOutput .= '<td class="eeSFL_FileDate"><span class="eeSFL_FileDateDisplayed">' . $eeSFL->eeFileDate . '</span></td>';
 		}
 
-		$eeOutput .= '</tr>';
+		 $eeOutput .= '
+		</tr>';
 
-		} // END If $fileURL
-
-	$eeFileID++; // Bump the ID
+		} // END If URL
 
 	}
 
-} // END $eeSFL_BASE->eeAllFiles loop
+} // END $eeSFL->eeDisplayFiles loop
 
 
-$eeOutput .= '
+ $eeOutput .= '
 
 </tbody>
 

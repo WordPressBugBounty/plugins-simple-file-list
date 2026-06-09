@@ -1,19 +1,19 @@
 === Simple File List ===
 Contributors: eemitch
 Donate link: http://simplefilelist.com
-Tags: file list, file sharing, share documents, zip files, ftp alternative
-Requires at least: 5.0
-Requires PHP: 7.4
-Tested up to: 6.9
-Stable tag: 6.1.18
+Tags: file manager, file sharing, share documents, zip files, ftp alternative
+Requires at least: 6.0
+Requires PHP: 8.1
+Tested up to: 7.0
+Stable tag: 6.3.6
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Simple File List gives your WordPress website a list of your files which allows your users to open and download them.
+Simple File List allows you to manage files on your WordPress website and provide file lists which allow your users to open and download them.
 
 == Description ==
 
-Simple File List is a free plugin that is great for when you need to provide a list of files, either publicly available or private to logged-in users. Place a file list anywhere on your site using a simple shortcode, allowing your front-end users to open, download and optionally edit them. Users can also upload files if you choose.
+Simple File List is a free plugin that is great for when you need to manage files and provide a list, either publicly available or private to logged-in users. Place a file list anywhere on your site using a simple shortcode, allowing your front-end users to open, download and optionally edit them. Users can also upload files if you choose.
 
 Simple File List is also a good alternative for organizations using clumsy FTP or Dropbox for larger files. Simply provide your clients with a link to their file list.
 
@@ -52,9 +52,7 @@ Simple File List is also a good alternative for organizations using clumsy FTP o
 * Add descriptions to files and optionally show them in your list.
 * Sort file by name, date modified, date added or file size ... ascending or descending.
 * Files are kept separate from the media library.
-* Add the free Media Player extensions for an improved experience with audio and video files.
-** [Simple File List Media](https://wordpress.org/plugins/ee-simple-file-list-media/)
-
+* Inline Media Player for an improved experience with audio and video files.
 
 ## File Uploader Features =
 
@@ -219,14 +217,12 @@ A: Yes! I enjoy helping people. Please contact me with any issues using the <a h
 
 A: I got frustrated with the difficulties of getting files back and forth between myself and my non-technical clients once they become too large for email, and having an archive for them to return to was needed. Training these people to use FTP or Dropbox was a challenge. I wanted something simple that I could use on my own website, so I created a simple index.php page that solved my problem. I later realized that others could benefit from this functionality, so I decided to port it to my favorite website platform; WordPress. I also hoped that the donations would pay for a large home and a private jet, but that has not happened yet :-(  Regardless, I still enjoy giving to the community and helping others.
 
-= Q: How do I report a security vulnerability that I have found?
 
-A: I take security issues very seriously. If you find and issue or have a concern, please contact me directly via <a href="https://simplefilelist.com/get-support/">simplefilelist.com</a>
 
 
 == Upgrade Notice ==
 
-* 6.1.18 - Fixed Broken Translations
+* 6.3.6 - Admin improvements and bug fixes.
 
 
 == Screenshots ==
@@ -238,12 +234,22 @@ A: I take security issues very seriously. If you find and issue or have a concer
 
 == Changelog ==
 
+= 6.3.6 =
+* Now includes many features previously only available in Pro.
+* Improved file and folder name sanitization.
+* Improved file system methods with PHP fallbacks for better compatibility on managed WordPress hosts (Pressable, Kinsta, WP Engine, etc.).
+* Removed the Re-Scan Files button because the file list is scanned on every page load.
+* Security fix: Upload notification emails are no longer triggered by probes — notifications only send when a file was actually saved.
+* PDF thumbnail generation no longer requires the Imagick PHP extension — GhostScript alone is sufficient.
+* Many under-the-hood performance, compatibility, and security improvements.
+* PHP 8.5 Approved.
+
 = 6.1.18 =
-* Fixed broken translations
+* Fixed broken translations.
 
 = 6.1.17 =
 * Security Fix: Fixed broken access control vulnerability (CVE-2025-68591) in file management operations.
-** Added back-end capability checks to help prevent malicious back-end users from circumventing the Back-End Access setting.
+* Added back-end capability checks to help prevent malicious back-end users from circumventing the Back-End Access setting.
 
 = 6.1.16 =
 * Security Fix: Fixed critical directory traversal vulnerability in upload confirmation routine.
@@ -643,7 +649,6 @@ Pages using the "showfolder" shortcode attribute will show "ERROR 95" where the 
 * Custom Upload Folder - Specify whatever folder you like for users to upload files.
 * Additional Viewing Restrictions - Limit viewing the list and/or uploading only to Admins.
 * Shortcode Attributes - Hide the list or the uploader on a per page/post basis using [eeSFL showlist="NO" allowuploads="NO"]
-* Improved Admin Dashboard / Simplified Menu
 * Extensive under-the-hood updates and improvements
 
 = 3.0.6 =

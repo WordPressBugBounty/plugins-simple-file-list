@@ -1,8 +1,7 @@
 /*
-// Simple File List Pro - Copyright 2022
+// Simple File List - Copyright 2026
 // Author: Mitchell Bennis | support@simplefilelist.com | https://simplefilelist.com
-// License: EULA | https://simplefilelist.com/end-user-license-agreement/
-// All changes to, modifications to, or re-uses of this script are prohibited without prior consent.
+// License: GPLv2 or later | https://www.gnu.org/licenses/gpl-2.0.html
 */
 
 #eeSFL_UploadForm {
@@ -13,7 +12,6 @@
 	background-color: var(--ee-color-upload-form-background);
 	border: 2px solid var(--ee-color-table-border);
 	margin: 0;
-	margin-bottom: 1em;
 }
 
 #eeSFL_UploadForm h2,
@@ -95,7 +93,7 @@
 	width: 100%;
 	padding: .2em;
 	margin-bottom: .5em;
-	
+
 }
 #eeSFL_UploadForm input[type=text],
 #eeSFL_UploadForm input[type=email],

@@ -1,13 +1,15 @@
 <?php
-
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
-if ( ! wp_verify_nonce( $eeSFL_Nonce, 'eeInclude' )) exit('ERROR 98'); // Exit if nonce fails
+// Simple File List - Copyright 2026
+// Author: Mitchell Bennis | support@simplefilelist.com | https://simplefilelist.com
+// License: GPLv2 or later | https://www.gnu.org/licenses/gpl-2.0.html
 
-$eeOutput .= '
+
+ $eeOutput .= '
 
 <footer class="eeClearFix">';
 
-	$eeOutput .= '<p id="eeFooterImportant" class="eeHide">' . __('IMPORTANT: Allowing the public to upload files to your web server comes with risk.', 'simple-file-list') . ' ' .
+	 $eeOutput .= '<p id="eeFooterImportant" class="eeHide">' . __('IMPORTANT: Allowing the public to upload files to your web server comes with risk.', 'simple-file-list') . ' ' .
 	__('Please go to Upload Settings and ensure that you only use the file types that you absolutely need.', 'simple-file-list') . ' ' .
 	__('Open each file submitted carefully.', 'simple-file-list') . '</p>
 
@@ -18,17 +20,33 @@ $eeOutput .= '
 
 	<br class="eeClear" />
 
-	<p class="ee-plugin-version"><a href="https://wordpress.org/plugins/simple-file-list/">Simple File List ' . __('Version', 'simple-file-list') . ' ' . eeSFL_BASE_Version . '</a>' .
-	' &rarr; <a href="https://get.simplefilelist.com/" target="_blank">Upgrade</a>';
+	<p class="ee-plugin-version">' . __('Plugin Version', 'simple-file-list') . ': ' . eeSFL_Version;
 
-	$eeOutput .= '</p>
+	if( defined('eeSFLS_Version') ) {  $eeOutput .= '<br />
+
+		' . __('Search Extension', 'simple-file-list') . ': ' . eeSFLS_Version;
+	}
+
+	if( defined('eeSFLA_Version') ) {  $eeOutput .= '<br />
+
+		' . __('Access Extension', 'simple-file-list') . ': ' . eeSFLA_Version;
+	}
+
+	if( defined('eeSFLE_Version') ) {  $eeOutput .= '<br />
+
+		' . __('Email Extension', 'simple-file-list') . ': ' . eeSFLE_Version;
+	}
+
+	 $eeOutput .= '</p>
 
 </footer>
 </main><!-- END .eeSFL_Admin -->
 </div><!-- END .wrap -->
-
 <!-- END SFL ADMIN -->
 
+
 ';
+
+$_POST = array();
 
 ?>
