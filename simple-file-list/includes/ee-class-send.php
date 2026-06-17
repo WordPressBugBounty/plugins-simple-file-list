@@ -168,6 +168,12 @@ class eeSFLE_class {
 			return __('Missing List ID', 'simple-file-list');
 		}
 
+		// Verify that front-end file sending is enabled for this list
+		if($eeSFL->eeListSettings['AllowFrontSend'] != 'YES') {
+			eeSFL_Debug_Log("ERROR: Front-end file sending is disabled", 'Send', $eeSFL->eeListID);
+			return __('File sending is not enabled', 'simple-file-list');
+		}
+
 		// From
 		if(isset($_POST['from'])) { // 1 Required
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- sanitize_email handles slashing

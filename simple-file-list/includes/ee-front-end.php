@@ -24,7 +24,6 @@ function eeSFL_FrontEnd($atts, $content = null) { // Shortcode Usage: [eeSFL]
     // Over-Riding Shortcode Attributes
 	// Always merge with defaults even if no atts provided
 	$atts = shortcode_atts( array( // Use lowercase att names only
-			'list' => '1',
 			'showlist' => '', // YES, ADMIN, USER or NO
 			'style' => '', // TABLE, TILES or FLEX
 			'theme' => '', // LIGHT, DARK or NONE
@@ -40,12 +39,6 @@ function eeSFL_FrontEnd($atts, $content = null) { // Shortcode Usage: [eeSFL]
 			'hidename' => '', // Hide the name matches
 			'getdesc' => '', // YES or NO to show the upload description input
 			'getinfo' => '', // YES or NO to show the upload user info inputs
-			'frontmanage' => '', // Allow Front Manage or Not
-			'folder' => '', // Folder path from FileListDir
-			'showfolder' => '', // LEGACY < 6
-			'paged' => '', // eeSFLS - YES or NO to paginate the list
-			'filecount' => '', // eeSFLS - Number of files per page
-			'search' => '' // eeSFLS - YES or NO to show the search form
 		), $atts );
 
 	// Extract attributes into variables
@@ -137,8 +130,6 @@ function eeSFL_FrontEnd($atts, $content = null) { // Shortcode Usage: [eeSFL]
 		if($showactions) { $eeSFL->eeListSettings['ShowFileActions'] = strtoupper($showactions); }
 		if($getdesc !== '') { $eeSFL->eeListSettings['GetUploaderDesc'] = strtoupper($getdesc); }
 		if($getinfo !== '') { $eeSFL->eeListSettings['GetUploaderInfo'] = strtoupper($getinfo); }
-		if($frontmanage) { $eeSFL->eeListSettings['AllowFrontManage'] = strtoupper($frontmanage); }
-
 
 		// Force a re-sort of the file list array if a shortcode attribute was used
 		if($sortby OR $sortorder) {
