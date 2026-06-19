@@ -882,17 +882,24 @@ function eeSFL_DeleteFile($eeFileName, $eeSubFolder = FALSE) {
 	global $eeSFL, $eeSFLF;
 
 	eeSFL_Debug_Log("DELETE: Starting delete operation for '$eeFileName'", 'FileOps', $eeSFL->eeListID);
-	eeSFL_Debug_Log("DELETE: Subfolder received: " . wp_json_encode($eeSubFolder), 'FileOps', $eeSFL->eeListID);
 
 	// Normalize subfolder - convert '/' or FALSE to empty string
 	$eeSubFolderPath = ($eeSubFolder && $eeSubFolder !== '/') ? $eeSubFolder : '';
-	eeSFL_Debug_Log("DELETE: Normalized subfolder: '$eeSubFolderPath'", 'FileOps', $eeSFL->eeListID);
 
 	$eeMessages = array('Deleting File');
 
 	// Construct full file path
 	$eeFilePath = eeSFL_WP_ROOT . $eeSFL->eeListSettings['FileListDir'] . $eeSubFolderPath . $eeFileName;
 	eeSFL_Debug_Log("DELETE: Full path: '$eeFilePath'", 'FileOps', $eeSFL->eeListID);
+
+	// Confinement check — ensure the resolved path stays within the list directory.
+	// Guards against path traversal in both $eeSubFolder (Pro) and $eeFileName.
+	$eeBaseDir = realpath(eeSFL_WP_ROOT . $eeSFL->eeListSettings['FileListDir']);
+	$eeRealPath = realpath($eeFilePath);
+	if( $eeBaseDir && $eeRealPath && strpos($eeRealPath, $eeBaseDir) !== 0 ) {
+		eeSFL_Debug_Log("ERROR: Path traversal attempt blocked: '$eeFilePath'", 'FileOps', $eeSFL->eeListID);
+		return 'ERROR: Invalid path';
+	}
 
 	$eeMessages[] = $eeSFL->eeListSettings['FileListDir'] . $eeFileName;
 
@@ -1262,7 +1269,10 @@ function eeSFL_FileEditor() {
 	$eeSFL->eeSFL_GetSettings($eeSFL->eeListID);
 
 	// Check if we should be doing this
-	if(!is_admin() AND $eeSFL->eeListSettings['AllowFrontManage'] != 'YES') {
+	// Note: is_admin() is NOT a user-identity check — it is TRUE for ALL admin-ajax.php requests,
+	// including unauthenticated nopriv ones. Use current_user_can() for authorization.
+	// When AllowFrontManage = YES the gate is intentionally open to all page visitors (by design).
+	if( !current_user_can('manage_options') AND $eeSFL->eeListSettings['AllowFrontManage'] != 'YES' ) {
 		eeSFL_Debug_Log("ERROR: Front manage not allowed", 'Admin', $eeSFL->eeListID);
 		return;
 	}
@@ -1285,13 +1295,12 @@ function eeSFL_FileEditor() {
 		return "Missing the File Name";
 	}
 
-	// Are we in a Folder?
+	// Subfolder support is a Pro feature — the free version always operates on the root directory.
+	// The eeSubFolder POST parameter is intentionally ignored here to eliminate the path traversal
+	// attack surface entirely (CVE-2026-11911). Pro: apply path traversal sanitization wherever
+	// eeSubFolder is read from POST — strip ../ sequences and validate the resolved path stays
+	// within FileListDir using realpath() before passing to eeSFL_DeleteFile() / eeSFL_RenameFile().
 	$eeSubFolder = FALSE;
-	if( isset($_POST['eeSubFolder']) && !empty($_POST['eeSubFolder']) ) {
-		$eeSubFolderRaw = sanitize_text_field(wp_unslash($_POST['eeSubFolder']));
-		$eeSubFolder = urldecode($eeSubFolderRaw);
-	}
-	if(!$eeSubFolder OR $eeSubFolder == '/') { $eeSubFolder = FALSE; }
 
 	eeSFL_Debug_Log("Action: $eeFileAction, File: $eeFileName, SubFolder: " . ($eeSubFolder ? $eeSubFolder : 'ROOT'), 'Admin', $eeSFL->eeListID);
 
@@ -1574,7 +1583,20 @@ function simplefilelist_sendfile_job() {
 
 function simplefilelist_confirm() {
 
+	if( !current_user_can('manage_options') ) { wp_die(); }
+
 	delete_option('eeSFL_Confirm');
+
+	wp_die();
+
+}
+
+
+function simplefilelist_dismiss() {
+
+	if( !current_user_can('manage_options') ) { wp_die(); }
+
+	delete_option('eeSFL_Dismiss');
 
 	wp_die();
 

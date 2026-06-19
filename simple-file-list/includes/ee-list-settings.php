@@ -420,6 +420,14 @@ eeSFL_Debug_Log("Loading: List Settings", 'General');
 
 			<div class="eeNote">' . __('Allow file deletion, file renaming, editing descriptions and dates.', 'simple-file-list') . '</div>
 
+			<div id="eeAllowFrontManageWarning" class="eeNote" style="color:#b32d2e;font-weight:bold;' . ($eeSFL->eeListSettings['AllowFrontManage'] == 'YES' ? '' : 'display:none;') . '">&#9888; ' . __('Warning: Front-End Management is enabled. Any visitor who can access this page will be able to delete, rename, and edit files. Restrict access to this page using WordPress page protection or a members-only plugin.', 'simple-file-list') . '</div>
+
+			<script>
+			document.getElementById("eeAllowFrontManage").addEventListener("change", function() {
+				document.getElementById("eeAllowFrontManageWarning").style.display = this.checked ? "" : "none";
+			});
+			</script>
+
 			</fieldset>';
 
 		} else {

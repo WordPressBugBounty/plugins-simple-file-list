@@ -5,7 +5,7 @@ Tags: file manager, file sharing, share documents, document library, ftp alterna
 Requires at least: 6.0
 Requires PHP: 8.1
 Tested up to: 7.0
-Stable tag: 6.3.7
+Stable tag: 6.3.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -220,6 +220,13 @@ Absolutely. Reach out through the <a href="https://wordpress.org/support/plugin/
 
 
 == Changelog ==
+
+= 6.3.8 =
+* Security Fix: Added capability checks to admin AJAX handlers `simplefilelist_confirm` and `simplefilelist_dismiss` — previously accessible to any logged-in user (CVE-2025-68591).
+* Security Fix: Replaced broken `is_admin()` authorization guard with `current_user_can('manage_options')` in the front-end file management handler. The previous check was always bypassed on AJAX requests.
+* Security Fix: The `eeSubFolder` POST parameter is no longer accepted in the file management AJAX handler. Subfolder support is a Pro feature; ignoring this parameter in the free version eliminates the path traversal attack surface (CVE-2026-11911) entirely.
+* Security: Added a `realpath()` confinement check in the file delete function as defense-in-depth against path traversal in any file path component.
+* UX: Added an admin warning when Front-End Management is enabled, reminding administrators that the feature will be open to all page visitors.
 
 = 6.3.7 =
 * Security Fix: Removed the `frontmanage` shortcode attribute that allowed Contributors and Authors to bypass administrator security settings.
