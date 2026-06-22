@@ -8,7 +8,7 @@ Plugin Name: Simple File List
 Plugin URI: https://simplefilelist.com
 Description: Easy file list and upload manager for WordPress.
 Author: Mitchell Bennis
-Version: 6.3.8
+Version: 6.3.9
 Author URI: https://simplefilelist.com
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -19,7 +19,7 @@ Domain Path: /languages
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 // CONSTANTS
-if(!defined('eeSFL_Version')) { define('eeSFL_Version', '6.3.8'); }
+if(!defined('eeSFL_Version')) { define('eeSFL_Version', '6.3.9'); }
 define('eeSFL_PluginName', 'Simple File List');
 define('eeSFL_PluginSlug', 'simple-file-list');
 define('eeSFL_Product', 'Free');

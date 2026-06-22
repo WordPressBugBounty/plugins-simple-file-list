@@ -291,13 +291,13 @@ if( !is_admin() &&
 <span class="eeHide" id="eeSFL_ID">' . $eeSFL->eeListID . '</span>
 
 <script>
-	var eeSFL_ThisURL = "' . $eeURL . '";
+	var eeSFL_ThisURL = "' . esc_js($eeURL) . '";
 	var eeSFL_ListID = ' . $eeSFL->eeListID . ';
-	var eeSFL_PluginURL = "' . $eeSFL->eeEnvironment['pluginURL'] . '";
-	var eeSFL_FileListDir = "' . $eeSFL->eeListSettings['FileListDir'] . '";
-	var eeSFL_SubFolder = "' . eeSFL_NormalizeSlashes($eeSFL->eeCurrentFolder) . '";
-	var eeSFL_ShortcodeFolder = "' . eeSFL_NormalizeSlashes($eeSFL->eeShortcodeFolder) . '";
-	var eeSFL_ShowListStyle = "' . $eeSFL->eeListSettings['ShowListStyle'] . '";
+	var eeSFL_PluginURL = "' . esc_js($eeSFL->eeEnvironment['pluginURL']) . '";
+	var eeSFL_FileListDir = "' . esc_js($eeSFL->eeListSettings['FileListDir']) . '";
+	var eeSFL_SubFolder = "' . esc_js(eeSFL_NormalizeSlashes($eeSFL->eeCurrentFolder)) . '";
+	var eeSFL_ShortcodeFolder = "' . esc_js(eeSFL_NormalizeSlashes($eeSFL->eeShortcodeFolder)) . '";
+	var eeSFL_ShowListStyle = "' . esc_js($eeSFL->eeListSettings['ShowListStyle']) . '";
 </script>
 
 ';

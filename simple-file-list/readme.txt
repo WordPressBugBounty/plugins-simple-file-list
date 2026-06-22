@@ -5,7 +5,7 @@ Tags: file manager, file sharing, share documents, document library, ftp alterna
 Requires at least: 6.0
 Requires PHP: 8.1
 Tested up to: 7.0
-Stable tag: 6.3.8
+Stable tag: 6.3.9
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -220,6 +220,9 @@ Absolutely. Reach out through the <a href="https://wordpress.org/support/plugin/
 
 
 == Changelog ==
+
+= 6.3.9 =
+* Security Fix: Reflected XSS — the current page URL was embedded into a JavaScript variable block without escaping. Applied `esc_js()` to all PHP values interpolated into the front-end JavaScript output.
 
 = 6.3.8 =
 * Security Fix: Added capability checks to admin AJAX handlers `simplefilelist_confirm` and `simplefilelist_dismiss` — previously accessible to any logged-in user (CVE-2025-68591).
