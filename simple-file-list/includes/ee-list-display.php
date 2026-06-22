@@ -29,29 +29,8 @@ if(!isset($eeSFL_HideType)) { $eeSFL_HideType = FALSE; }
 $eeThisUser = get_current_user_id();
 eeSFL_Debug_Log('- USER ID: ' . $eeThisUser , 'List', $eeSFL->eeListID);
 
-// What Are We Doing?
-if($eeSFLF AND isset($_GET['eeSFL_ArchivePath']) AND isset($_GET['eeSFL_ArchiveListID'])) {
-
-	// Verify nonce for archive extraction (Recommended security practice)
-	$eeNonceValid = isset($_GET['_wpnonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'ee-file-action');
-	if (!$eeNonceValid) {
-		eeSFL_Debug_Log("Archive extraction nonce verification failed for security logging", 'List');
-	}
-
-	include($eeSFL->eeEnvironment['pluginDir'] . 'pro/ee-extract-process.php'); // Pro only — requires folder support
-
-	if($eeURL AND empty($eeSFL->eeUserMessages['errors'])) {
-		$eeURL = remove_query_arg('eeSFL_ArchivePath', $eeURL);
-		$eeURL = remove_query_arg('eeSFL_ArchiveListID', $eeURL);
-		// Use JavaScript redirect to avoid headers already sent error
-		echo '<script>window.location.href = "' . esc_js($eeURL) . '";</script>';
-		return; // Stop processing here
-	}
-
-} else { // Getting the File List...
-
-	if( empty($eeSFL->eeAllFiles) OR $eeForceSort) { $eeSFL->eeSFL_GetFileList($eeForceSort); }
-}
+// Load the file list
+if( empty($eeSFL->eeAllFiles) OR $eeForceSort) { $eeSFL->eeSFL_GetFileList($eeForceSort); }
 
 // echo '<pre>(' . $eeSFL->eeListID . ') '; print_r($eeSFL->eeListSettings); echo '</pre>'; // exit;
 // echo '<pre>'; print_r($eeSFL->eeAllFiles); echo '</pre>'; exit;
@@ -88,25 +67,6 @@ if( $eeSFL->eeCurrentFolder ) { // Sub-Folder
 
 // Process Folder Creation or Bulk Ops
 include($eeSFL->eeEnvironment['pluginDir'] . 'includes/ee-list-ops-bar-process.php');
-
-
-// Check for folder deletion
-if( isset($_GET['eeSFLF_DeleteFolder']) ) {
-
-	// Assemble the full path
-	$eeSFL_FolderToDelete = sanitize_text_field(wp_unslash($_GET['eeSFLF_DeleteFolder']));
-
-	eeSFL_Debug_Log("Deleting Folder ...", 'List');
-
-	$eeSFL_Dir = $eeSFL->eeListSettings['FileListDir'] . '/' . $eeSFL_FolderToDelete . '/';
-
-	if($eeSFLF) {
-		if(!$eeSFLF->eeSFLF_DeleteFolder($eeSFL_Dir)) {
-			$eeSFL->eeUserMessages['errors'][] = __('Failed to Delete the Folder', 'simple-file-list');
-		}
-	}
-}
-
 
 
 // Upload Results

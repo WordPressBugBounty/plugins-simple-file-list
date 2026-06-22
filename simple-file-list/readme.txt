@@ -5,7 +5,7 @@ Tags: file manager, file sharing, share documents, document library, ftp alterna
 Requires at least: 6.0
 Requires PHP: 8.1
 Tested up to: 7.0
-Stable tag: 6.3.9
+Stable tag: 6.3.10
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -220,6 +220,10 @@ Absolutely. Reach out through the <a href="https://wordpress.org/support/plugin/
 
 
 == Changelog ==
+
+= 6.3.10 =
+* Security Fix: Archive extraction and folder delete dispatch code removed from the free plugin — both are Pro-only features and have no attack surface in the free version.
+* Security Fix: Removed broken `&& !is_admin()` short-circuit from the email send nonce check. `is_admin()` always returns `true` on `admin-ajax.php`, so the nonce was never enforced on AJAX requests.
 
 = 6.3.9 =
 * Security Fix: Reflected XSS — the current page URL was embedded into a JavaScript variable block without escaping. Applied `esc_js()` to all PHP values interpolated into the front-end JavaScript output.

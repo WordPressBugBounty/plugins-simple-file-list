@@ -8,7 +8,7 @@ Plugin Name: Simple File List
 Plugin URI: https://simplefilelist.com
 Description: Easy file list and upload manager for WordPress.
 Author: Mitchell Bennis
-Version: 6.3.9
+Version: 6.3.10
 Author URI: https://simplefilelist.com
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -19,7 +19,7 @@ Domain Path: /languages
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 // CONSTANTS
-if(!defined('eeSFL_Version')) { define('eeSFL_Version', '6.3.9'); }
+if(!defined('eeSFL_Version')) { define('eeSFL_Version', '6.3.10'); }
 define('eeSFL_PluginName', 'Simple File List');
 define('eeSFL_PluginSlug', 'simple-file-list');
 define('eeSFL_Product', 'Free');
@@ -207,9 +207,8 @@ function eeSFL_Setup() {
 
 		// Email File Send Check
 		if( $eeSFLE AND isset($_POST['eeSFLE_Send']) ) {
-			// Verify nonce for email send form submission (Missing nonce security)
-			if (!check_ajax_referer( 'eeSFL_SendNonce', 'eeSecurity', FALSE ) && !is_admin()) {
-				// Skip email sending if nonce verification fails
+			if (!check_ajax_referer( 'eeSFL_SendNonce', 'eeSecurity', FALSE )) {
+				// Reject — nonce missing or invalid in all contexts including admin-ajax
 			} else {
 				$eeSFLE->eeSFLE_SendFilesEmail(); // Sending Files
 			}
