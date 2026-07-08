@@ -1567,7 +1567,7 @@ function simplefilelist_sendfile_job() {
 
 	global $eeSFLE;
 
-	if(!$eeSFLE) {
+	if(!is_object($eeSFLE) || !method_exists($eeSFLE, 'eeSFLE_SendFilesEmail')) {
 		echo 'ERROR: Email module not loaded';
 		wp_die();
 	}

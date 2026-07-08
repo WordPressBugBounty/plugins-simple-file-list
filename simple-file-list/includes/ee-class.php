@@ -47,6 +47,15 @@ class eeSFL_MainClass {
 
 		if(!defined('eeSFL_WP_ROOT')) {
 
+			// Check transient cache — avoids a filesystem write test on every page load.
+			// Cleared on plugin activation (eeSFL_Activate); expires after 24 hours.
+			$eeRootPath = get_transient('eeSFL_root_path');
+			if($eeRootPath !== false) {
+				define('eeSFL_WP_ROOT', $eeRootPath);
+				eeSFL_Debug_Log("eeSFL_WP_ROOT (cached) = " . $eeRootPath, 'Environment');
+				return $eeRootPath;
+			}
+
 			eeSFL_Debug_Log("Checking file operations compatibility...", 'Environment');
 			eeSFL_Debug_Log("ABSPATH = " . ABSPATH, 'Environment');
 
@@ -96,6 +105,7 @@ class eeSFL_MainClass {
 				eeSFL_Debug_Log("Using standard ABSPATH: " . $eeRootPath, 'Environment');
 			}
 
+			set_transient('eeSFL_root_path', $eeRootPath, DAY_IN_SECONDS);
 			define('eeSFL_WP_ROOT', $eeRootPath);
 			eeSFL_Debug_Log("eeSFL_WP_ROOT = " . $eeRootPath, 'Environment');
 

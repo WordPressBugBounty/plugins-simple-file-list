@@ -271,6 +271,13 @@ function eeSFL_FrontEnd($atts, $content = null) { // Shortcode Usage: [eeSFL]
 	}
 
 	if($eeSFL->eeListSettings['ShowList'] != 'NO') {
+
+		// Lazy-load the email class if email sharing is enabled and it was not loaded at setup
+		if((!is_object($eeSFLE) || !method_exists($eeSFLE, 'eeSFLE_EmailSendForm')) && ($eeSFL->eeListSettings['AllowFrontSend'] ?? 'NO') === 'YES') {
+			require_once($eeSFL->eeEnvironment['pluginDir'] . 'includes/ee-class-send.php');
+			$eeSFLE = new eeSFLE_class();
+		}
+
 		eeSFL_Debug_Log("Displaying frontend list - Mode: " . ($eeSFL->eeListSettings['Mode'] ?? 'Unknown'), 'Shortcode', $eeSFL->eeListID);
 		include($eeSFL->eeEnvironment['pluginDir'] . 'includes/ee-list-display.php'); // The List is Loaded Here -------------
 	} else {

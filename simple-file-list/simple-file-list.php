@@ -8,7 +8,7 @@ Plugin Name: Simple File List
 Plugin URI: https://simplefilelist.com
 Description: Easy file list and upload manager for WordPress.
 Author: Mitchell Bennis
-Version: 6.3.10
+Version: 6.3.11
 Author URI: https://simplefilelist.com
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -19,7 +19,7 @@ Domain Path: /languages
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 // CONSTANTS
-if(!defined('eeSFL_Version')) { define('eeSFL_Version', '6.3.10'); }
+if(!defined('eeSFL_Version')) { define('eeSFL_Version', '6.3.11'); }
 define('eeSFL_PluginName', 'Simple File List');
 define('eeSFL_PluginSlug', 'simple-file-list');
 define('eeSFL_Product', 'Free');
@@ -38,7 +38,7 @@ define('eeSFL_Go', wp_date('Y-m-d h:m:s') ); // Log Entry Key
 // GLOBAL VARIABLES
 $eeSFL = new stdClass(); // Our Main Object
 $eeSFLU = new stdClass(); // Our Upload Class
-$eeSFLE = new stdClass(); // Email Sharing
+$eeSFLE = FALSE; // Email Sharing Object
 $eeSFLM = TRUE; // Media Player
 $eeSFL_Upload = FALSE; // File Uploading
 $eeSFL_Thumbs = FALSE; // Thumbnail Creation and Management Object
@@ -61,72 +61,73 @@ function eeSFL_Setup() {
 
 	global $eeSFL, $eeSFL_VarsForJS, $eeSFLE, $eeSFLU;
 
-	// Load required resource
-	if(!function_exists('is_plugin_active')) {
-		include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-	}
+	// Admin-only startup tasks: plugin state checks, conflicting plugin deactivation, debug tools.
+	// Guarded here to avoid loading wp-admin/includes/plugin.php on every frontend page load.
+	if(is_admin()) {
 
-	// Purge stale registration options for extensions that are no longer installed/active.
-	// This prevents leftover NAG/NO options from showing bogus alerts after an extension is removed.
-	$eeSFL_ExtensionPlugins = array(
-		'eeSFLS' => 'ee-simple-file-list-search/ee-simple-file-list-search.php',
-		'eeSFLA' => 'ee-simple-file-list-access/ee-simple-file-list-access.php',
-		'eeSFLE' => 'ee-simple-file-list-email/ee-simple-file-list-email.php',
-	);
-	foreach ($eeSFL_ExtensionPlugins as $eeExtPrefix => $eeExtPlugin) {
-		if (!is_plugin_active($eeExtPlugin)) {
-			delete_option($eeExtPrefix . '_Registration');
-			delete_transient($eeExtPrefix . '_RegCheck');
+		if(!function_exists('is_plugin_active')) {
+			include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 		}
-	}
-	unset($eeSFL_ExtensionPlugins, $eeExtPrefix, $eeExtPlugin);
 
-	// Load debug logging functions from Tools plugin (debug console output is in Tools plugin)
-	// Only load if the Tools plugin is actually active
-	if (is_plugin_active('ee-simple-file-list-tools/ee-simple-file-list-tools.php')) {
-		$tools_debug_file = WP_PLUGIN_DIR . '/ee-simple-file-list-tools/includes/ee-tools-debug.php';
-		if (file_exists($tools_debug_file)) {
-			include_once($tools_debug_file);
+		// Purge stale registration options for extensions that are no longer installed/active.
+		// This prevents leftover NAG/NO options from showing bogus alerts after an extension is removed.
+		$eeSFL_ExtensionPlugins = array(
+			'eeSFLS' => 'ee-simple-file-list-search/ee-simple-file-list-search.php',
+			'eeSFLA' => 'ee-simple-file-list-access/ee-simple-file-list-access.php',
+			'eeSFLE' => 'ee-simple-file-list-email/ee-simple-file-list-email.php',
+		);
+		foreach ($eeSFL_ExtensionPlugins as $eeExtPrefix => $eeExtPlugin) {
+			if (!is_plugin_active($eeExtPlugin)) {
+				delete_option($eeExtPrefix . '_Registration');
+				delete_transient($eeExtPrefix . '_RegCheck');
+			}
 		}
-	}
+		unset($eeSFL_ExtensionPlugins, $eeExtPrefix, $eeExtPlugin);
+
+		// Load debug logging functions from Tools plugin (debug console output is in Tools plugin)
+		// Only load if the Tools plugin is actually active
+		if (is_plugin_active('ee-simple-file-list-tools/ee-simple-file-list-tools.php')) {
+			$tools_debug_file = WP_PLUGIN_DIR . '/ee-simple-file-list-tools/includes/ee-tools-debug.php';
+			if (file_exists($tools_debug_file)) {
+				include_once($tools_debug_file);
+			}
+		}
+
+		// Deactivate the Pro version if needed
+		$eePlugin = 'ee-simple-file-list-pro/ee-simple-file-list-pro.php';
+		if( is_plugin_active($eePlugin) ) {
+			deactivate_plugins($eePlugin);
+		}
+
+		// Deactivate the old Email extension if needed (functionality now integrated into core)
+		$eePlugin = 'ee-simple-file-list-email/ee-simple-file-list-email.php';
+		if( is_plugin_active($eePlugin) ) {
+			deactivate_plugins($eePlugin);
+			add_action( 'admin_notices', function() {
+				echo '<div class="notice notice-warning is-dismissible"><p><strong>' .
+					esc_html__('Simple File List:', 'simple-file-list') . '</strong> ' .
+					esc_html__('The Email extension has been automatically deactivated because email functionality is now integrated into core.', 'simple-file-list') .
+					'</p></div>';
+			});
+		}
+
+		// Deactivate the old Media extension if needed (functionality now integrated into core)
+		$eePlugin = 'ee-simple-file-list-media/ee-simple-file-list-media.php';
+		if( is_plugin_active($eePlugin) ) {
+			deactivate_plugins($eePlugin);
+			add_action( 'admin_notices', function() {
+				echo '<div class="notice notice-warning is-dismissible"><p><strong>' .
+					esc_html__('Simple File List:', 'simple-file-list') . '</strong> ' .
+					esc_html__('The Media extension has been automatically deactivated because media functionality is now integrated into core.', 'simple-file-list') .
+					'</p></div>';
+			});
+		}
+
+	} // end is_admin()
+
+	// Define debug logging stub (no-op on frontend; real implementation provided by Tools plugin above)
 	if(!function_exists('eeSFL_Debug_Log')) { function eeSFL_Debug_Log($eeString) { return FALSE; } }
 	eeSFL_Debug_Log("Simple File List v" . eeSFL_Version . " initializing", 'Loading');
-
-	// Trigger test error to see if the log is working.
-	// trigger_error("TEST ERROR: Simple File List Pro debugging active", E_USER_NOTICE);
-
-	// Deactivate the Pro version if needed
-	$eePlugin = 'ee-simple-file-list-pro/ee-simple-file-list-pro.php';
-	if( is_plugin_active($eePlugin) ) {
-		deactivate_plugins($eePlugin);
-		eeSFL_Debug_Log("Deactivated conflicting Pro version", 'Loading');
-	}
-
-	// Deactivate the old Email extension if needed (functionality now integrated into core)
-	$eePlugin = 'ee-simple-file-list-email/ee-simple-file-list-email.php';
-	if( is_plugin_active($eePlugin) ) {
-		deactivate_plugins($eePlugin);
-		eeSFL_Debug_Log("Deactivated old email extension (now integrated into core)", 'Loading');
-		add_action( 'admin_notices', function() {
-			echo '<div class="notice notice-warning is-dismissible"><p><strong>' .
-				esc_html__('Simple File List:', 'simple-file-list') . '</strong> ' .
-				esc_html__('The Email extension has been automatically deactivated because email functionality is now integrated into core.', 'simple-file-list') .
-				'</p></div>';
-		});
-	}
-
-	// Deactivate the old Media extension if needed (functionality now integrated into core)
-	$eePlugin = 'ee-simple-file-list-media/ee-simple-file-list-media.php';
-	if( is_plugin_active($eePlugin) ) {
-		deactivate_plugins($eePlugin);
-		eeSFL_Debug_Log("Deactivated old media extension (now integrated into core)", 'Loading');
-		add_action( 'admin_notices', function() {
-			echo '<div class="notice notice-warning is-dismissible"><p><strong>' .
-				esc_html__('Simple File List:', 'simple-file-list') . '</strong> ' .
-				esc_html__('The Media extension has been automatically deactivated because media functionality is now integrated into core.', 'simple-file-list') .
-				'</p></div>';
-		});
-	}
 
 	// Translation strings to pass to javascript as eesfl_vars
 	$eeProtocol = isset( $_SERVER['HTTPS'] ) ? 'https://' : 'http://';
@@ -195,9 +196,15 @@ function eeSFL_Setup() {
 		$eeSFL_StartTime = round( microtime(true) - (isset($_SERVER["REQUEST_TIME_FLOAT"]) ? sanitize_text_field(wp_unslash($_SERVER["REQUEST_TIME_FLOAT"])) : microtime(true)), 3);
 		$eeSFL_MemoryUsedStart = memory_get_usage();
 
-		// Load Email Sharing Class
-		require_once(plugin_dir_path(__FILE__) . 'includes/ee-class-send.php');
-		$eeSFLE = new eeSFLE_class();
+		// Load Email Sharing Class only when needed — on the frontend it is lazy-loaded
+		// in the shortcode if AllowFrontSend is enabled.
+		$eeNeedsEmailClass = is_admin()
+			|| isset($_POST['eeSFLE_Send'])
+			|| (defined('DOING_AJAX') && DOING_AJAX && isset($_POST['action']) && sanitize_key(wp_unslash($_POST['action'])) === 'simplefilelist_sendfile_job');
+		if($eeNeedsEmailClass) {
+			require_once(plugin_dir_path(__FILE__) . 'includes/ee-class-send.php');
+			$eeSFLE = new eeSFLE_class();
+		}
 
 		// Set List ID
 		$eeSFL->eeListID = 1;
@@ -206,7 +213,7 @@ function eeSFL_Setup() {
 		$eeSFL->eeSFL_GetSettings($eeSFL->eeListID);
 
 		// Email File Send Check
-		if( $eeSFLE AND isset($_POST['eeSFLE_Send']) ) {
+		if( is_object($eeSFLE) && method_exists($eeSFLE, 'eeSFLE_SendFilesEmail') && isset($_POST['eeSFLE_Send']) ) {
 			if (!check_ajax_referer( 'eeSFL_SendNonce', 'eeSecurity', FALSE )) {
 				// Reject — nonce missing or invalid in all contexts including admin-ajax
 			} else {
@@ -279,11 +286,13 @@ function eeSFL_Activate() {
 
 	include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 
+	// Clear cached root path so it is re-verified after activation or update
+	delete_transient('eeSFL_root_path');
+
 	// Deactivate the Pro version if needed
 	$eePlugin = 'ee-simple-file-list-pro/ee-simple-file-list-pro.php';
 	if( is_plugin_active($eePlugin) ) {
 		deactivate_plugins($eePlugin);
-		eeSFL_Debug_Log("Deactivated conflicting Pro version", 'Loading');
 	}
 
 	return TRUE;

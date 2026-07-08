@@ -526,7 +526,7 @@ if($eeAdmin OR $eeSFL->eeListSettings['AllowFrontManage'] == 'YES') {
 }
 
 // Extension Check
-if($eeSFLE) {
+if(is_object($eeSFLE) && method_exists($eeSFLE, 'eeSFLE_EmailSendForm')) {
 
 	if( $eeSFL->eeShortcodeFolder ) { // Front-side
 

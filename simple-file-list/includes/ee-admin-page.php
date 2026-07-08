@@ -80,7 +80,7 @@ function eeSFL_BackEnd() {
 	}
 
 
-	if($active_tab == 'list' OR $active_tab == 'settings' OR $active_tab == 'tools' OR $active_tab == 'getpro') {
+	if($active_tab == 'list' OR $active_tab == 'settings' OR $active_tab == 'getpro') {
 
 		 $eeOutput .= '
 
@@ -129,13 +129,7 @@ function eeSFL_BackEnd() {
 	 $eeOutput .= $active_tab == 'getpro' ? 'nav-tab-active' : '';
 	 $eeOutput .= '">' . __('Get Pro Version', 'simple-file-list') . '</a>';
 
-	// Tools
-	if (!defined('eeSFLu_Version')) {
-		 $eeOutput .= '<a href="?page=' . eeSFL_PluginSlug . '&tab=tools&eeListID=' . $eeSFL->eeListID . '" id="eeSFL_TabTools" class="nav-tab ';
-		if($active_tab == 'tools') { $eeOutput .= ' eeActiveTab '; }
-		 $eeOutput .= $active_tab == 'tools' ? 'nav-tab-active' : '';
-		 $eeOutput .= '">' . __('Tools', 'simple-file-list') . '</a>';
-	}
+
 
     // Link to Support Form
      $eeOutput .= '
@@ -439,10 +433,6 @@ function eeSFL_BackEnd() {
 
 		</div>
 		</section>';
-
-	} elseif($active_tab == 'tools') { // Tools Tab
-
-		include($eeSFL->eeEnvironment['pluginDir'] . 'includes/ee-admin-tools.php');
 
 	} // END Tab Content
 
